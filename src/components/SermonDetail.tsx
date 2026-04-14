@@ -6,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Save, Trash2, Calendar } from 'lucide-react';
+import { ArrowLeft, Save, Trash2, Calendar, Sparkles, RefreshCw } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
@@ -22,11 +22,12 @@ interface SermonDetailProps {
 const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onDelete }) => {
   const [editedSermon, setEditedSermon] = useState<Sermon>(sermon);
   const [isSaving, setIsSaving] = useState(false);
+  const [aiContent, setAiContent] = useState<string>('');
+  const [isLoadingAI, setIsLoadingAI] = useState(false);
+  const [aiError, setAiError] = useState<string>('');
 
   const handleDateChange = (date: Date | undefined) => {
     if (!date) return;
-    
-    // Create a proper local date to avoid timezone issues
     const localDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
     setEditedSermon({ ...editedSermon, date: localDate });
   };
@@ -34,27 +35,101 @@ const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onD
   const handleSave = async () => {
     try {
       setIsSaving(true);
-      
-      // Ensure date is properly formatted as a Date object
       const sermonToSave = {
         ...editedSermon,
         date: editedSermon.date instanceof Date ? editedSermon.date : new Date(editedSermon.date)
       };
-      
-      // Save the sermon and wait for completion
       await onSave(sermonToSave);
-      
-      // Add a small delay to ensure state propagation
       await new Promise(resolve => setTimeout(resolve, 100));
-      
-      // Close the detail view after saving is complete
       onBack();
-      
     } catch (error) {
       console.error('Error saving sermon:', error);
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleGenerateAI = async () => {
+    const title = editedSermon.title || '';
+    const scripture = editedSermon.scripture || '';
+    const theme = editedSermon.theme || '';
+
+    if (!scripture && !theme && !title) {
+      setAiError('Please fill in at least a title, scripture, or theme before generating.');
+      return;
+    }
+
+    setIsLoadingAI(true);
+    setAiError('');
+    setAiContent('');
+
+    const prompt = `You are a helpful sermon preparation assistant for a pastor. Based on the following sermon details, generate practical prep content to help the pastor and their team on Tuesday.
+
+Sermon Title: ${title || 'Not yet set'}
+Scripture Passage: ${scripture || 'Not yet set'}
+Theme: ${theme || 'Not yet set'}
+
+Please provide:
+
+1. **Sermon Summary** (2-3 sentences capturing the heart of the message)
+
+2. **3 Key Points** (clear, memorable sermon points drawn from the passage)
+
+3. **Illustration Idea** (a relatable story, analogy, or real-life example that connects the theme to everyday life)
+
+4. **Bottom Line Suggestion** (one punchy sentence that captures the main takeaway — something the congregation can remember and apply)
+
+5. **Discussion Questions** (2-3 questions for small group or life group follow-up)
+
+Keep the tone practical, warm, and ministry-focused. Avoid overly academic language.`;
+
+    try {
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1000,
+          messages: [
+            { role: 'user', content: prompt }
+          ],
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data?.content?.[0]?.text) {
+        setAiContent(data.content[0].text);
+      } else {
+        setAiError('No response received. Please try again.');
+      }
+    } catch (err) {
+      console.error('AI generation error:', err);
+      setAiError('Something went wrong connecting to the AI. Please try again.');
+    } finally {
+      setIsLoadingAI(false);
+    }
+  };
+
+  const formatAIContent = (text: string) => {
+    return text.split('\n').map((line, i) => {
+      if (line.startsWith('**') && line.endsWith('**')) {
+        return <p key={i} className="font-bold text-green-400 mt-4 mb-1">{line.replace(/\*\*/g, '')}</p>;
+      }
+      if (line.match(/^\d+\.\s\*\*/)) {
+        const cleaned = line.replace(/\*\*/g, '');
+        return <p key={i} className="font-semibold text-green-300 mt-3 mb-1">{cleaned}</p>;
+      }
+      if (line.startsWith('- ')) {
+        return <p key={i} className="text-gray-300 ml-4">• {line.slice(2)}</p>;
+      }
+      if (line.trim() === '') {
+        return <div key={i} className="h-1" />;
+      }
+      return <p key={i} className="text-gray-300">{line}</p>;
+    });
   };
 
   return (
@@ -87,8 +162,8 @@ const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onD
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
-          <Button 
-            onClick={handleSave} 
+          <Button
+            onClick={handleSave}
             disabled={isSaving}
             className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 text-green-400"
           >
@@ -97,6 +172,62 @@ const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onD
           </Button>
         </div>
       </div>
+
+      {/* AI ASSISTANT BOX */}
+      <Card className="bg-gray-950 border border-green-900">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-green-400" />
+              <CardTitle className="text-green-400">AI Sermon Assistant</CardTitle>
+            </div>
+            <Button
+              onClick={handleGenerateAI}
+              disabled={isLoadingAI}
+              className="flex items-center gap-2 bg-green-900 hover:bg-green-800 text-white text-sm"
+            >
+              {isLoadingAI ? (
+                <>
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4" />
+                  {aiContent ? 'Regenerate' : 'Generate Prep Content'}
+                </>
+              )}
+            </Button>
+          </div>
+          <p className="text-gray-500 text-sm mt-1">
+            Based on your title, scripture, and theme — gives your team a head start for Tuesday prep.
+          </p>
+        </CardHeader>
+        <CardContent>
+          {aiError && (
+            <p className="text-red-400 text-sm">{aiError}</p>
+          )}
+          {!aiContent && !isLoadingAI && !aiError && (
+            <p className="text-gray-600 text-sm italic">
+              Fill in the title, scripture, and theme then click "Generate Prep Content" to get started.
+            </p>
+          )}
+          {isLoadingAI && (
+            <div className="space-y-2">
+              <div className="h-3 bg-gray-800 rounded animate-pulse w-3/4" />
+              <div className="h-3 bg-gray-800 rounded animate-pulse w-full" />
+              <div className="h-3 bg-gray-800 rounded animate-pulse w-2/3" />
+              <div className="h-3 bg-gray-800 rounded animate-pulse w-full" />
+              <div className="h-3 bg-gray-800 rounded animate-pulse w-1/2" />
+            </div>
+          )}
+          {aiContent && !isLoadingAI && (
+            <div className="text-sm leading-relaxed space-y-1">
+              {formatAIContent(aiContent)}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid gap-6 md:grid-cols-2">
         <Card className="bg-black border-gray-800">
@@ -179,11 +310,11 @@ const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onD
                 placeholder="Brainstorm ideas, thoughts, and inspiration for this sermon..."
                 className="min-h-32 bg-black text-white border-gray-700 placeholder-gray-400"
                 value={editedSermon.customFields?.brainstorming || ''}
-                onChange={(e) => setEditedSermon({ 
-                  ...editedSermon, 
-                  customFields: { 
-                    ...editedSermon.customFields, 
-                    brainstorming: e.target.value 
+                onChange={(e) => setEditedSermon({
+                  ...editedSermon,
+                  customFields: {
+                    ...editedSermon.customFields,
+                    brainstorming: e.target.value
                   }
                 })}
               />
@@ -191,7 +322,7 @@ const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onD
           </CardContent>
         </Card>
       </div>
-      {/* Sermon Notes - Larger card positioned after communicator */}
+
       <Card className="bg-black border-gray-800">
         <CardHeader>
           <CardTitle className="text-white">Sermon Notes</CardTitle>
@@ -213,11 +344,11 @@ const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onD
               id="bottomLine"
               placeholder="Key takeaway or main message..."
               value={editedSermon.customFields?.bottomLine || ''}
-              onChange={(e) => setEditedSermon({ 
-                ...editedSermon, 
-                customFields: { 
-                  ...editedSermon.customFields, 
-                  bottomLine: e.target.value 
+              onChange={(e) => setEditedSermon({
+                ...editedSermon,
+                customFields: {
+                  ...editedSermon.customFields,
+                  bottomLine: e.target.value
                 }
               })}
               className="min-h-24 bg-black text-white border-gray-700 placeholder-gray-400"
@@ -239,8 +370,8 @@ const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onD
                 placeholder="Order of service, timing, special elements..."
                 className="min-h-32 bg-black text-white border-gray-700 placeholder-gray-400"
                 value={editedSermon.serviceAgenda || ''}
-                onChange={(e) => setEditedSermon({ 
-                  ...editedSermon, 
+                onChange={(e) => setEditedSermon({
+                  ...editedSermon,
                   serviceAgenda: e.target.value
                 })}
               />
@@ -260,8 +391,8 @@ const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onD
                 placeholder="Important announcements for this service..."
                 className="min-h-32 bg-black text-white border-gray-700 placeholder-gray-400"
                 value={editedSermon.announcements || ''}
-                onChange={(e) => setEditedSermon({ 
-                  ...editedSermon, 
+                onChange={(e) => setEditedSermon({
+                  ...editedSermon,
                   announcements: e.target.value
                 })}
               />
@@ -281,8 +412,8 @@ const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onD
                 placeholder="Posts, hashtags, promotional content..."
                 className="min-h-32 bg-black text-white border-gray-700 placeholder-gray-400"
                 value={editedSermon.socialMediaPlan || ''}
-                onChange={(e) => setEditedSermon({ 
-                  ...editedSermon, 
+                onChange={(e) => setEditedSermon({
+                  ...editedSermon,
                   socialMediaPlan: e.target.value
                 })}
               />
@@ -290,7 +421,6 @@ const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onD
           </CardContent>
         </Card>
       </div>
-
     </div>
   );
 };
