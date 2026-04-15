@@ -29,7 +29,7 @@ const SeriesDetail: React.FC<SeriesDetailProps> = ({
   const [selectedSermon, setSelectedSermon] = useState<Sermon | null>(null);
   const [editingSermon, setEditingSermon] = useState<Sermon | null>(null);
   const [creatingSermon, setCreatingSermon] = useState(false);
-  // Check if a specific sermon should be selected (from calendar)
+
   useEffect(() => {
     if ((series as any).selectedSermonId && series.sermons) {
       const sermon = series.sermons.find(s => s.id === (series as any).selectedSermonId);
@@ -51,31 +51,30 @@ const SeriesDetail: React.FC<SeriesDetailProps> = ({
     setSelectedSermon(null);
     setEditingSermon(null);
     setCreatingSermon(false);
-    
     if (fromCalendar) {
       onBack();
     }
   };
 
- const handleSaveSermon = async (sermon: Sermon, shouldNavigateBack: boolean = true) => {
+  const handleSaveSermon = async (sermon: Sermon, shouldNavigateBack: boolean = true) => {
     const isEditing = editingSermon || selectedSermon;
-    
+
     if (isEditing) {
       await updateSermon(series.id, sermon);
     } else {
       await addSermon(series.id, sermon);
     }
-    
+
     const updatedSeries = { ...series };
     if (isEditing) {
-      updatedSeries.sermons = updatedSeries.sermons.map(s => 
+      updatedSeries.sermons = updatedSeries.sermons.map(s =>
         s.id === sermon.id ? sermon : s
       );
     } else {
       updatedSeries.sermons = [...updatedSeries.sermons, sermon];
     }
     onUpdateSeries(updatedSeries);
-    
+
     if (shouldNavigateBack) {
       setEditingSermon(null);
       setCreatingSermon(false);
@@ -85,41 +84,12 @@ const SeriesDetail: React.FC<SeriesDetailProps> = ({
       }
     }
   };
-    // Check if we're editing an existing sermon (either through editingSermon or selectedSermon)
-    const isEditing = editingSermon || selectedSermon;
-    
-    if (isEditing) {
-      await updateSermon(series.id, sermon);
-    } else {
-      await addSermon(series.id, sermon);
-    }
-    
-    const updatedSeries = { ...series };
-    if (isEditing) {
-      // Only update the existing sermon in the array, don't add a new one
-      updatedSeries.sermons = updatedSeries.sermons.map(s => 
-        s.id === sermon.id ? sermon : s
-      );
-    } else {
-      // Only add new sermon if we're not editing
-      updatedSeries.sermons = [...updatedSeries.sermons, sermon];
-    }
-    onUpdateSeries(updatedSeries);
-    
-    setEditingSermon(null);
-    setCreatingSermon(false);
-    setSelectedSermon(null);
-    
-    if (fromCalendar) {
-      onBack();
-    }
-  };
 
   const handleDeleteSermon = async (sermon: Sermon) => {
     await deleteSermon(series.id, sermon.id);
-    const updatedSeries = { 
-      ...series, 
-      sermons: series.sermons.filter(s => s.id !== sermon.id) 
+    const updatedSeries = {
+      ...series,
+      sermons: series.sermons.filter(s => s.id !== sermon.id)
     };
     onUpdateSeries(updatedSeries);
     setSelectedSermon(null);
@@ -170,9 +140,9 @@ const SeriesDetail: React.FC<SeriesDetailProps> = ({
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <Button 
-          variant="ghost" 
-          onClick={onBack} 
+        <Button
+          variant="ghost"
+          onClick={onBack}
           className="flex items-center gap-2"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -230,8 +200,8 @@ const SeriesDetail: React.FC<SeriesDetailProps> = ({
           <div className="flex items-start gap-4">
             <div className="w-24 h-24 bg-muted rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0">
               {series.artwork ? (
-                <img 
-                  src={series.artwork} 
+                <img
+                  src={series.artwork}
                   alt={series.title}
                   className="w-full h-full object-cover"
                 />
@@ -276,7 +246,6 @@ const SeriesDetail: React.FC<SeriesDetailProps> = ({
           />
         ))}
       </div>
-
 
       {(!series.sermons || series.sermons.length === 0) && (
         <Card>
