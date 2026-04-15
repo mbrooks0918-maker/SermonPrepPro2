@@ -57,7 +57,34 @@ const SeriesDetail: React.FC<SeriesDetailProps> = ({
     }
   };
 
-  const handleSaveSermon = async (sermon: Sermon) => {
+ const handleSaveSermon = async (sermon: Sermon, shouldNavigateBack: boolean = true) => {
+    const isEditing = editingSermon || selectedSermon;
+    
+    if (isEditing) {
+      await updateSermon(series.id, sermon);
+    } else {
+      await addSermon(series.id, sermon);
+    }
+    
+    const updatedSeries = { ...series };
+    if (isEditing) {
+      updatedSeries.sermons = updatedSeries.sermons.map(s => 
+        s.id === sermon.id ? sermon : s
+      );
+    } else {
+      updatedSeries.sermons = [...updatedSeries.sermons, sermon];
+    }
+    onUpdateSeries(updatedSeries);
+    
+    if (shouldNavigateBack) {
+      setEditingSermon(null);
+      setCreatingSermon(false);
+      setSelectedSermon(null);
+      if (fromCalendar) {
+        onBack();
+      }
+    }
+  };
     // Check if we're editing an existing sermon (either through editingSermon or selectedSermon)
     const isEditing = editingSermon || selectedSermon;
     
