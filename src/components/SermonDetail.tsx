@@ -203,15 +203,13 @@ const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onD
             </Button>
           </div>
           <p className="text-gray-500 text-sm mt-1">
-            Based on your title, scripture, and theme — gives your team a head start for Tuesday prep.
-          </p>
-        </CardHeader>
+Hopefully, this will be helpful content to give you a head start preparing this message.        </CardHeader>
         <CardContent>
           {aiError && (
             <p className="text-red-400 text-sm">{aiError}</p>
           )}
           {!aiContent && !isLoadingAI && !aiError && (
-            <p className="text-gray-600 text-sm italic">
+            <p className="text-gray-500 text-sm italic">
               Fill in the title, scripture, and theme then click "Generate Prep Content" to get started.
             </p>
           )}
