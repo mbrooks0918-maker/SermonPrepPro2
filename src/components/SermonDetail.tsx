@@ -15,7 +15,7 @@ import { format } from 'date-fns';
 interface SermonDetailProps {
   sermon: Sermon;
   onBack: () => void;
-  onSave: (sermon: Sermon) => void;
+  onSave: (sermon: Sermon, shouldNavigateBack?: boolean) => void;
   onDelete: () => void;
 }
 
@@ -28,28 +28,24 @@ const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onD
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isFirstRender = useRef(true);
 
-  // Autosave whenever editedSermon changes (but not on first render)
   useEffect(() => {
     if (isFirstRender.current) {
       isFirstRender.current = false;
       return;
     }
 
-    // Clear any existing timer
     if (saveTimer.current) clearTimeout(saveTimer.current);
 
     setSaveStatus('saving');
 
-    // Wait 2 seconds after last change before saving
     saveTimer.current = setTimeout(async () => {
       try {
         const sermonToSave = {
           ...editedSermon,
           date: editedSermon.date instanceof Date ? editedSermon.date : new Date(editedSermon.date)
         };
-        await onSave(sermonToSave);
+        await onSave(sermonToSave, false);
         setSaveStatus('saved');
-        // Reset back to idle after 3 seconds
         setTimeout(() => setSaveStatus('idle'), 3000);
       } catch (error) {
         console.error('Autosave error:', error);
@@ -133,7 +129,6 @@ const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onD
           Back to Series
         </Button>
         <div className="flex items-center gap-2">
-          {/* Autosave status indicator */}
           {saveStatus === 'saving' && (
             <div className="flex items-center gap-1 text-gray-400 text-sm">
               <Loader2 className="h-3 w-3 animate-spin" />
@@ -296,29 +291,29 @@ const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onD
           </CardContent>
         </Card>
 
-     <Card className="bg-black border-gray-800 flex flex-col">
-  <CardHeader>
-    <CardTitle className="text-white">Brainstorming</CardTitle>
-  </CardHeader>
-  <CardContent className="flex-1 flex flex-col">
-    <div className="flex flex-col flex-1">
-      <Label htmlFor="brainstorming" className="text-white mb-2">Ideas & Thoughts</Label>
-      <Textarea
-        id="brainstorming"
-        placeholder="Brainstorm ideas, thoughts, and inspiration for this sermon..."
-        className="flex-1 bg-black text-white border-gray-700 placeholder-gray-400"
-        value={editedSermon.customFields?.brainstorming || ''}
-        onChange={(e) => setEditedSermon({
-          ...editedSermon,
-          customFields: {
-            ...editedSermon.customFields,
-            brainstorming: e.target.value
-          }
-        })}
-      />
-    </div>
-  </CardContent>
-</Card>
+        <Card className="bg-black border-gray-800 flex flex-col">
+          <CardHeader>
+            <CardTitle className="text-white">Brainstorming</CardTitle>
+          </CardHeader>
+          <CardContent className="flex-1 flex flex-col">
+            <div className="flex flex-col flex-1">
+              <Label htmlFor="brainstorming" className="text-white mb-2">Ideas & Thoughts</Label>
+              <Textarea
+                id="brainstorming"
+                placeholder="Brainstorm ideas, thoughts, and inspiration for this sermon..."
+                className="flex-1 bg-black text-white border-gray-700 placeholder-gray-400"
+                value={editedSermon.customFields?.brainstorming || ''}
+                onChange={(e) => setEditedSermon({
+                  ...editedSermon,
+                  customFields: {
+                    ...editedSermon.customFields,
+                    brainstorming: e.target.value
+                  }
+                })}
+              />
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <Card className="bg-black border-gray-800">
