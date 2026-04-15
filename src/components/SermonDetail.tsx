@@ -63,45 +63,19 @@ const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onD
     setAiError('');
     setAiContent('');
 
-    const prompt = `You are a helpful sermon preparation assistant for a pastor. Based on the following sermon details, generate practical prep content to help the pastor and their team on Tuesday.
-
-Sermon Title: ${title || 'Not yet set'}
-Scripture Passage: ${scripture || 'Not yet set'}
-Theme: ${theme || 'Not yet set'}
-
-Please provide:
-
-1. **Sermon Summary** (2-3 sentences capturing the heart of the message)
-
-2. **3 Key Points** (clear, memorable sermon points drawn from the passage)
-
-3. **Illustration Idea** (a relatable story, analogy, or real-life example that connects the theme to everyday life)
-
-4. **Bottom Line Suggestion** (one punchy sentence that captures the main takeaway — something the congregation can remember and apply)
-
-5. **Discussion Questions** (2-3 questions for small group or life group follow-up)
-
-Keep the tone practical, warm, and ministry-focused. Avoid overly academic language.`;
-
     try {
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
+      const response = await fetch('/api/generate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 1000,
-          messages: [
-            { role: 'user', content: prompt }
-          ],
-        }),
+        body: JSON.stringify({ title, scripture, theme }),
       });
 
       const data = await response.json();
 
-      if (data?.content?.[0]?.text) {
-        setAiContent(data.content[0].text);
+      if (data?.result) {
+        setAiContent(data.result);
       } else {
         setAiError('No response received. Please try again.');
       }
