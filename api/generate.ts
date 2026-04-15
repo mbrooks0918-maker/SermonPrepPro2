@@ -7,6 +7,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const { title, scripture, theme } = req.body;
 
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+
+  if (!apiKey) {
+    return res.status(500).json({ error: 'API key not found' });
+  }
+
   const prompt = `You are a helpful sermon preparation assistant for a pastor. Based on the following sermon details, generate practical prep content to help the pastor and their team on Tuesday.
 
 Sermon Title: ${title || 'Not yet set'}
@@ -32,21 +38,26 @@ Keep the tone practical, warm, and ministry-focused. Avoid overly academic langu
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY || '',
+        'x-api-key': apiKey,
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-opus-4-6',
         max_tokens: 1000,
         messages: [{ role: 'user', content: prompt }],
       }),
     });
 
     const data = await response.json();
+
+    if (!response.ok) {
+      return res.status(500).json({ error: JSON.stringify(data) });
+    }
+
     const text = data?.content?.[0]?.text || '';
-    res.status(200).json({ result: text });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Failed to generate content' });
+    return res.status(200).json({ result: text });
+
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message || 'Unknown error' });
   }
 }
