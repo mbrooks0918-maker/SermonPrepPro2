@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Sermon } from '@/types/sermon';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -6,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Save, Trash2, Calendar, Sparkles, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Trash2, Calendar, Sparkles, RefreshCw, Check, Loader2 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
@@ -21,32 +21,51 @@ interface SermonDetailProps {
 
 const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onDelete }) => {
   const [editedSermon, setEditedSermon] = useState<Sermon>(sermon);
-  const [isSaving, setIsSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [aiContent, setAiContent] = useState<string>('');
   const [isLoadingAI, setIsLoadingAI] = useState(false);
   const [aiError, setAiError] = useState<string>('');
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isFirstRender = useRef(true);
+
+  // Autosave whenever editedSermon changes (but not on first render)
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+
+    // Clear any existing timer
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+
+    setSaveStatus('saving');
+
+    // Wait 2 seconds after last change before saving
+    saveTimer.current = setTimeout(async () => {
+      try {
+        const sermonToSave = {
+          ...editedSermon,
+          date: editedSermon.date instanceof Date ? editedSermon.date : new Date(editedSermon.date)
+        };
+        await onSave(sermonToSave);
+        setSaveStatus('saved');
+        // Reset back to idle after 3 seconds
+        setTimeout(() => setSaveStatus('idle'), 3000);
+      } catch (error) {
+        console.error('Autosave error:', error);
+        setSaveStatus('idle');
+      }
+    }, 2000);
+
+    return () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+    };
+  }, [editedSermon]);
 
   const handleDateChange = (date: Date | undefined) => {
     if (!date) return;
     const localDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
     setEditedSermon({ ...editedSermon, date: localDate });
-  };
-
-  const handleSave = async () => {
-    try {
-      setIsSaving(true);
-      const sermonToSave = {
-        ...editedSermon,
-        date: editedSermon.date instanceof Date ? editedSermon.date : new Date(editedSermon.date)
-      };
-      await onSave(sermonToSave);
-      await new Promise(resolve => setTimeout(resolve, 100));
-      onBack();
-    } catch (error) {
-      console.error('Error saving sermon:', error);
-    } finally {
-      setIsSaving(false);
-    }
   };
 
   const handleGenerateAI = async () => {
@@ -66,9 +85,7 @@ const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onD
     try {
       const response = await fetch('/api/generate', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title, scripture, theme }),
       });
 
@@ -76,6 +93,8 @@ const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onD
 
       if (data?.result) {
         setAiContent(data.result);
+      } else if (data?.error) {
+        setAiError(data.error);
       } else {
         setAiError('No response received. Please try again.');
       }
@@ -114,6 +133,19 @@ const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onD
           Back to Series
         </Button>
         <div className="flex items-center gap-2">
+          {/* Autosave status indicator */}
+          {saveStatus === 'saving' && (
+            <div className="flex items-center gap-1 text-gray-400 text-sm">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              Saving...
+            </div>
+          )}
+          {saveStatus === 'saved' && (
+            <div className="flex items-center gap-1 text-green-400 text-sm">
+              <Check className="h-3 w-3" />
+              Saved
+            </div>
+          )}
           <Badge variant={editedSermon.status === 'complete' ? 'default' : 'secondary'} className="bg-gray-800 text-green-400">
             {editedSermon.status}
           </Badge>
@@ -136,14 +168,6 @@ const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onD
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
-          <Button
-            onClick={handleSave}
-            disabled={isSaving}
-            className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 text-green-400"
-          >
-            <Save className="h-4 w-4" />
-            {isSaving ? 'Saving...' : 'Save'}
-          </Button>
         </div>
       </div>
 
@@ -282,7 +306,7 @@ const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onD
               <Textarea
                 id="brainstorming"
                 placeholder="Brainstorm ideas, thoughts, and inspiration for this sermon..."
-                className="min-h-32 bg-black text-white border-gray-700 placeholder-gray-400"
+                className="min-h-140 bg-black text-white border-gray-700 placeholder-gray-400"
                 value={editedSermon.customFields?.brainstorming || ''}
                 onChange={(e) => setEditedSermon({
                   ...editedSermon,
