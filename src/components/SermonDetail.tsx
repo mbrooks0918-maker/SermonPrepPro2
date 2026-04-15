@@ -296,30 +296,29 @@ const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onD
           </CardContent>
         </Card>
 
-        <Card className="bg-black border-gray-800">
-          <CardHeader>
-            <CardTitle className="text-white">Brainstorming</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div>
-              <Label htmlFor="brainstorming" className="text-white">Ideas & Thoughts</Label>
-              <Textarea
-                id="brainstorming"
-                placeholder="Brainstorm ideas, thoughts, and inspiration for this sermon..."
-                className="bg-black text-white border-gray-700 placeholder-gray-400"
-style={{ minHeight: '400px' }}
-                value={editedSermon.customFields?.brainstorming || ''}
-                onChange={(e) => setEditedSermon({
-                  ...editedSermon,
-                  customFields: {
-                    ...editedSermon.customFields,
-                    brainstorming: e.target.value
-                  }
-                })}
-              />
-            </div>
-          </CardContent>
-        </Card>
+     <Card className="bg-black border-gray-800 flex flex-col">
+  <CardHeader>
+    <CardTitle className="text-white">Brainstorming</CardTitle>
+  </CardHeader>
+  <CardContent className="flex-1 flex flex-col">
+    <div className="flex flex-col flex-1">
+      <Label htmlFor="brainstorming" className="text-white mb-2">Ideas & Thoughts</Label>
+      <Textarea
+        id="brainstorming"
+        placeholder="Brainstorm ideas, thoughts, and inspiration for this sermon..."
+        className="flex-1 bg-black text-white border-gray-700 placeholder-gray-400"
+        value={editedSermon.customFields?.brainstorming || ''}
+        onChange={(e) => setEditedSermon({
+          ...editedSermon,
+          customFields: {
+            ...editedSermon.customFields,
+            brainstorming: e.target.value
+          }
+        })}
+      />
+    </div>
+  </CardContent>
+</Card>
       </div>
 
       <Card className="bg-black border-gray-800">
