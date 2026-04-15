@@ -90,7 +90,6 @@ const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onD
       if (data?.result) {
         const generated = data.result;
         setAiContent(generated);
-        // Save the AI content to the sermon record immediately
         const sermonWithAI = {
           ...editedSermon,
           ai_content: generated,
@@ -202,14 +201,16 @@ const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onD
               )}
             </Button>
           </div>
-          <p className="text-gray-500 text-sm mt-1">
-Hopefully, this will be helpful content to give you a head start preparing this message.        </CardHeader>
+          <p className="text-gray-300 text-sm mt-1">
+            Hopefully, this will be helpful content and give you a head start preparing this message.
+          </p>
+        </CardHeader>
         <CardContent>
           {aiError && (
             <p className="text-red-400 text-sm">{aiError}</p>
           )}
           {!aiContent && !isLoadingAI && !aiError && (
-            <p className="text-gray-500 text-sm italic">
+            <p className="text-gray-400 text-sm italic">
               Fill in the title, scripture, and theme then click "Generate Prep Content" to get started.
             </p>
           )}
