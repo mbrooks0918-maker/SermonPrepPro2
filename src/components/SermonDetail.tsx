@@ -306,7 +306,7 @@ const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onD
               <Textarea
                 id="brainstorming"
                 placeholder="Brainstorm ideas, thoughts, and inspiration for this sermon..."
-                className="min-h-140 bg-black text-white border-gray-700 placeholder-gray-400"
+                className="min-h-96 bg-black text-white border-gray-700 placeholder-gray-400"
                 value={editedSermon.customFields?.brainstorming || ''}
                 onChange={(e) => setEditedSermon({
                   ...editedSermon,
