@@ -172,13 +172,13 @@ export const sermonService = {
       
       if (error) throw error
       
-      // Map database fields back to object properties
       return (data || []).map((row: any) => ({
         ...row,
         serviceAgenda: row.service_agenda || '',
         announcements: row.announcements || '',
         socialMediaPlan: row.social_media_plan || '',
-        customFields: row.custom_fields || {}
+        customFields: row.custom_fields || {},
+        ai_content: row.ai_content || ''
       }))
     } catch (error) {
       console.warn('Supabase error, falling back to localStorage:', error)
@@ -220,7 +220,8 @@ export const sermonService = {
           social_media_plan: sermon.socialMediaPlan,
           communicator: sermon.communicator,
           custom_fields: sermon.customFields,
-          status: sermon.status || 'draft'
+          status: sermon.status || 'draft',
+          ai_content: (sermon as any).ai_content || null
         }])
         .select()
         .single()
@@ -262,6 +263,7 @@ export const sermonService = {
       if ('communicator' in updates) updateData.communicator = updates.communicator
       if ('customFields' in updates) updateData.custom_fields = updates.customFields
       if ('status' in updates) updateData.status = updates.status
+      if ('ai_content' in updates) updateData.ai_content = (updates as any).ai_content
 
       const { data, error } = await supabase
         .from('sermons')
