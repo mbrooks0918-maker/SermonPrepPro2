@@ -43,7 +43,7 @@ Keep the tone practical, warm, and ministry-focused. Avoid overly academic langu
       },
       body: JSON.stringify({
         model: 'claude-opus-4-6',
-        max_tokens: 1000,
+        max_tokens: 2000,
         messages: [{ role: 'user', content: prompt }],
       }),
     });
