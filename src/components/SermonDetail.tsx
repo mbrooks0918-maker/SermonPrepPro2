@@ -22,7 +22,7 @@ interface SermonDetailProps {
 const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onDelete }) => {
   const [editedSermon, setEditedSermon] = useState<Sermon>(sermon);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
-  const [aiContent, setAiContent] = useState<string>('');
+  const [aiContent, setAiContent] = useState<string>((sermon as any).ai_content || '');
   const [isLoadingAI, setIsLoadingAI] = useState(false);
   const [aiError, setAiError] = useState<string>('');
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -88,7 +88,17 @@ const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onD
       const data = await response.json();
 
       if (data?.result) {
-        setAiContent(data.result);
+        const generated = data.result;
+        setAiContent(generated);
+        // Save the AI content to the sermon record immediately
+        const sermonWithAI = {
+          ...editedSermon,
+          ai_content: generated,
+          date: editedSermon.date instanceof Date ? editedSermon.date : new Date(editedSermon.date)
+        } as any;
+        await onSave(sermonWithAI, false);
+        setSaveStatus('saved');
+        setTimeout(() => setSaveStatus('idle'), 3000);
       } else if (data?.error) {
         setAiError(data.error);
       } else {
