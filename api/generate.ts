@@ -10,7 +10,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
 
   if (!apiKey) {
-    return res.status(500).json({ error: 'API key not found' });
+    return res.status(500).json({ error: 'API key not configured. Please contact your administrator.' });
   }
 
   const prompt = `You are a helpful sermon preparation assistant for a pastor. Based on the following sermon details, generate practical prep content to help the pastor and their team on Tuesday.
@@ -51,13 +51,20 @@ Keep the tone practical, warm, and ministry-focused. Avoid overly academic langu
     const data = await response.json();
 
     if (!response.ok) {
-      return res.status(500).json({ error: JSON.stringify(data) });
+      // Check specifically for billing/credit errors
+      const errorMessage = data?.error?.message || '';
+      if (errorMessage.includes('credit balance') || errorMessage.includes('billing') || errorMessage.includes('upgrade')) {
+        return res.status(402).json({ 
+          error: 'Your Anthropic API credits have run out. Please visit console.anthropic.com → Plans & Billing to add credits.' 
+        });
+      }
+      return res.status(500).json({ error: 'AI service error: ' + errorMessage });
     }
 
     const text = data?.content?.[0]?.text || '';
     return res.status(200).json({ result: text });
 
   } catch (err: any) {
-    return res.status(500).json({ error: err.message || 'Unknown error' });
+    return res.status(500).json({ error: err.message || 'Unknown error connecting to AI service.' });
   }
 }
