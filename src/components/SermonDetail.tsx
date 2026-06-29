@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Sermon } from '@/types/sermon';
+import { supabase } from '@/lib/supabase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Trash2, Calendar, Sparkles, RefreshCw, Check, Loader2 } from 'lucide-react';
+import { ArrowLeft, Trash2, Calendar, Sparkles, RefreshCw, Check, Loader2, Radio } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
@@ -25,9 +26,67 @@ const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onD
   const [aiContent, setAiContent] = useState<string>((sermon as any).ai_content || '');
   const [isLoadingAI, setIsLoadingAI] = useState(false);
   const [aiError, setAiError] = useState<string>('');
+  const [isLive, setIsLive] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isFirstRender = useRef(true);
+  const focusedField = useRef<string | null>(null);
 
+  // Supabase Realtime subscription
+  useEffect(() => {
+    if (!supabase) return;
+
+    const channel = supabase
+      .channel(`sermon-${sermon.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'sermons',
+          filter: `id=eq.${sermon.id}`
+        },
+        (payload: any) => {
+          const updated = payload.new;
+          setEditedSermon(prev => {
+            const merged = { ...prev };
+            // Only update fields the current user is NOT actively typing in
+            if (focusedField.current !== 'title') merged.title = updated.title ?? prev.title;
+            if (focusedField.current !== 'theme') merged.theme = updated.theme ?? prev.theme;
+            if (focusedField.current !== 'scripture') merged.scripture = updated.scripture ?? prev.scripture;
+            if (focusedField.current !== 'notes') merged.notes = updated.notes ?? prev.notes;
+            if (focusedField.current !== 'communicator') merged.communicator = updated.communicator ?? prev.communicator;
+            if (focusedField.current !== 'serviceAgenda') merged.serviceAgenda = updated.service_agenda ?? prev.serviceAgenda;
+            if (focusedField.current !== 'announcements') merged.announcements = updated.announcements ?? prev.announcements;
+            if (focusedField.current !== 'socialMediaPlan') merged.socialMediaPlan = updated.social_media_plan ?? prev.socialMediaPlan;
+            if (focusedField.current !== 'brainstorming') {
+              merged.customFields = {
+                ...prev.customFields,
+                brainstorming: updated.custom_fields?.brainstorming ?? prev.customFields?.brainstorming
+              };
+            }
+            if (focusedField.current !== 'bottomLine') {
+              merged.customFields = {
+                ...merged.customFields,
+                bottomLine: updated.custom_fields?.bottomLine ?? prev.customFields?.bottomLine
+              };
+            }
+            if (updated.ai_content && updated.ai_content !== prev.ai_content) {
+              setAiContent(updated.ai_content);
+            }
+            return merged;
+          });
+        }
+      )
+      .subscribe((status: string) => {
+        setIsLive(status === 'SUBSCRIBED');
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [sermon.id]);
+
+  // Autosave
   useEffect(() => {
     if (isFirstRender.current) {
       isFirstRender.current = false;
@@ -35,7 +94,6 @@ const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onD
     }
 
     if (saveTimer.current) clearTimeout(saveTimer.current);
-
     setSaveStatus('saving');
 
     saveTimer.current = setTimeout(async () => {
@@ -132,6 +190,15 @@ const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onD
 
   return (
     <div className="p-6 space-y-6 bg-black min-h-screen">
+
+      {/* Live collaboration banner */}
+      {isLive && (
+        <div className="flex items-center gap-2 bg-green-950 border border-green-800 rounded-lg px-4 py-2 text-green-400 text-sm">
+          <Radio className="h-3 w-3 animate-pulse" />
+          Live — changes from your team appear here automatically
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <Button variant="ghost" onClick={onBack} className="flex items-center gap-2 bg-gray-800 text-green-400 hover:bg-gray-700">
           <ArrowLeft className="h-4 w-4" />
@@ -242,6 +309,8 @@ const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onD
               <Input
                 id="title"
                 value={editedSermon.title}
+                onFocus={() => { focusedField.current = 'title'; }}
+                onBlur={() => { focusedField.current = null; }}
                 onChange={(e) => setEditedSermon({ ...editedSermon, title: e.target.value })}
                 className="bg-black text-white border-gray-700"
               />
@@ -251,6 +320,8 @@ const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onD
               <Input
                 id="theme"
                 value={editedSermon.theme}
+                onFocus={() => { focusedField.current = 'theme'; }}
+                onBlur={() => { focusedField.current = null; }}
                 onChange={(e) => setEditedSermon({ ...editedSermon, theme: e.target.value })}
                 className="bg-black text-white border-gray-700"
               />
@@ -260,6 +331,8 @@ const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onD
               <Input
                 id="scripture"
                 value={editedSermon.scripture}
+                onFocus={() => { focusedField.current = 'scripture'; }}
+                onBlur={() => { focusedField.current = null; }}
                 onChange={(e) => setEditedSermon({ ...editedSermon, scripture: e.target.value })}
                 className="bg-black text-white border-gray-700"
               />
@@ -292,6 +365,8 @@ const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onD
               <Input
                 id="communicator"
                 value={editedSermon.communicator}
+                onFocus={() => { focusedField.current = 'communicator'; }}
+                onBlur={() => { focusedField.current = null; }}
                 onChange={(e) => setEditedSermon({ ...editedSermon, communicator: e.target.value })}
                 placeholder="Who is delivering this sermon?"
                 className="bg-black text-white border-gray-700 placeholder-gray-400"
@@ -312,6 +387,8 @@ const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onD
                 placeholder="Brainstorm ideas, thoughts, and inspiration for this sermon..."
                 className="flex-1 bg-black text-white border-gray-700 placeholder-gray-400"
                 value={editedSermon.customFields?.brainstorming || ''}
+                onFocus={() => { focusedField.current = 'brainstorming'; }}
+                onBlur={() => { focusedField.current = null; }}
                 onChange={(e) => setEditedSermon({
                   ...editedSermon,
                   customFields: {
@@ -337,6 +414,8 @@ const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onD
               placeholder="Sermon outline, key points, illustrations..."
               className="min-h-48 bg-black text-white border-gray-700 placeholder-gray-400"
               value={editedSermon.notes}
+              onFocus={() => { focusedField.current = 'notes'; }}
+              onBlur={() => { focusedField.current = null; }}
               onChange={(e) => setEditedSermon({ ...editedSermon, notes: e.target.value })}
             />
           </div>
@@ -346,6 +425,8 @@ const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onD
               id="bottomLine"
               placeholder="Key takeaway or main message..."
               value={editedSermon.customFields?.bottomLine || ''}
+              onFocus={() => { focusedField.current = 'bottomLine'; }}
+              onBlur={() => { focusedField.current = null; }}
               onChange={(e) => setEditedSermon({
                 ...editedSermon,
                 customFields: {
@@ -372,6 +453,8 @@ const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onD
                 placeholder="Order of service, timing, special elements..."
                 className="min-h-32 bg-black text-white border-gray-700 placeholder-gray-400"
                 value={editedSermon.serviceAgenda || ''}
+                onFocus={() => { focusedField.current = 'serviceAgenda'; }}
+                onBlur={() => { focusedField.current = null; }}
                 onChange={(e) => setEditedSermon({
                   ...editedSermon,
                   serviceAgenda: e.target.value
@@ -393,6 +476,8 @@ const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onD
                 placeholder="Important announcements for this service..."
                 className="min-h-32 bg-black text-white border-gray-700 placeholder-gray-400"
                 value={editedSermon.announcements || ''}
+                onFocus={() => { focusedField.current = 'announcements'; }}
+                onBlur={() => { focusedField.current = null; }}
                 onChange={(e) => setEditedSermon({
                   ...editedSermon,
                   announcements: e.target.value
@@ -414,6 +499,8 @@ const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onD
                 placeholder="Posts, hashtags, promotional content..."
                 className="min-h-32 bg-black text-white border-gray-700 placeholder-gray-400"
                 value={editedSermon.socialMediaPlan || ''}
+                onFocus={() => { focusedField.current = 'socialMediaPlan'; }}
+                onBlur={() => { focusedField.current = null; }}
                 onChange={(e) => setEditedSermon({
                   ...editedSermon,
                   socialMediaPlan: e.target.value
