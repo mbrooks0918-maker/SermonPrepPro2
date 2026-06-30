@@ -43,6 +43,23 @@ const SeriesDetail: React.FC<SeriesDetailProps> = ({
     return (series && typeof series === 'object' && series.color) ? series.color : '#6366f1';
   };
 
+  // Safely format a date that may be missing, a string, or unparseable.
+  // Returns 'No date set' instead of letting `new Date(...)` render 'Invalid Date'.
+  const formatDate = (value: unknown): string => {
+    if (value === null || value === undefined || value === '') return 'No date set';
+    const date = new Date(value as string | number | Date);
+    return isNaN(date.getTime()) ? 'No date set' : date.toLocaleDateString();
+  };
+
+  // Series loaded from Supabase carry snake_case `start_date`/`end_date`, while
+  // locally-created ones use camelCase — accept either before formatting.
+  const startLabel = formatDate((series as any).startDate ?? (series as any).start_date);
+  const endLabel = formatDate((series as any).endDate ?? (series as any).end_date);
+  const dateRangeLabel =
+    startLabel === 'No date set' && endLabel === 'No date set'
+      ? 'No date set'
+      : `${startLabel} - ${endLabel}`;
+
   const handleSermonClick = (sermon: Sermon) => {
     setSelectedSermon(sermon);
   };
@@ -215,7 +232,7 @@ const SeriesDetail: React.FC<SeriesDetailProps> = ({
               <div className="flex items-center gap-4 text-sm text-muted-foreground">
                 <div className="flex items-center gap-1">
                   <Calendar className="h-4 w-4" />
-                  {new Date(series.startDate).toLocaleDateString()} - {new Date(series.endDate).toLocaleDateString()}
+                  {dateRangeLabel}
                 </div>
                 <Badge variant="secondary">{series.sermons?.length || 0} sermons</Badge>
                 <Badge variant="outline" style={{ borderColor: safeColor, color: safeColor }}>
