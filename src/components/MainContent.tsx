@@ -6,6 +6,7 @@ import SeriesDetail from './SeriesDetail';
 import CalendarView from './CalendarView';
 import ArchivedSeriesList from './ArchivedSeriesList';
 import SeriesForm from './SeriesForm';
+import LoadingSpinner from './LoadingSpinner';
 
 interface MainContentProps {
   activeTab: string;
@@ -13,7 +14,7 @@ interface MainContentProps {
 }
 
 const MainContent: React.FC<MainContentProps> = ({ activeTab }) => {
-  const { sermonSeries, updateSeries, addSeries } = useAppContext();
+  const { sermonSeries, updateSeries, addSeries, loading } = useAppContext();
   const [selectedSeries, setSelectedSeries] = useState<SermonSeries | null>(null);
   const [editingSeries, setEditingSeries] = useState<SermonSeries | null>(null);
   const [calendarSermonSelection, setCalendarSermonSelection] = useState<{seriesId: string, sermonId: string} | null>(null);
@@ -91,6 +92,13 @@ const MainContent: React.FC<MainContentProps> = ({ activeTab }) => {
     console.log('❌ Cancelled series editing');
     setEditingSeries(null);
   };
+
+  // Guard against rendering any detail view before series data has loaded from
+  // Supabase. Without this, landing directly on a sermon/series detail while
+  // sermonSeries is still empty crashes (e.g. reading `series.artwork` of undefined).
+  if (loading) {
+    return <LoadingSpinner />;
+  }
 
   // Calendar tab - always show calendar view unless viewing a specific sermon
   if (activeTab === 'calendar') {

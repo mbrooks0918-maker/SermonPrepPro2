@@ -111,6 +111,10 @@ export const sermonSeriesService = {
       if ('status' in updates) updateData.status = updates.status
       if ('artwork' in updates) updateData.artwork = updates.artwork
       if ('bumperVideo' in updates) updateData.bumperVideo = updates.bumperVideo
+      // Always bump updated_at so every write produces a distinct timestamp.
+      // Realtime consumers dedupe on updated_at; without this it stays static
+      // and live updates after the first one get silently suppressed.
+      updateData.updated_at = new Date().toISOString()
 
       const { data, error } = await supabase
         .from('sermon_series')
@@ -264,6 +268,10 @@ export const sermonService = {
       if ('customFields' in updates) updateData.custom_fields = updates.customFields
       if ('status' in updates) updateData.status = updates.status
       if ('ai_content' in updates) updateData.ai_content = (updates as any).ai_content
+      // Always bump updated_at so every write produces a distinct timestamp.
+      // SermonDetail's Realtime handler dedupes on updated_at; without this it
+      // stays static and live updates after the first one get silently suppressed.
+      updateData.updated_at = new Date().toISOString()
 
       const { data, error } = await supabase
         .from('sermons')
