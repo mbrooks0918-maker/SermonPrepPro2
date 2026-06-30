@@ -30,8 +30,9 @@ const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onD
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isFirstRender = useRef(true);
   const focusedField = useRef<string | null>(null);
+  const lastLocalSaveAt = useRef<number>(0);
+  const lastAppliedUpdatedAt = useRef<string | null>(null);
 
-  // Supabase Realtime subscription
   useEffect(() => {
     if (!supabase) return;
 
@@ -47,9 +48,19 @@ const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onD
         },
         (payload: any) => {
           const updated = payload.new;
+
+          const now = Date.now();
+          if (now - lastLocalSaveAt.current < 3000) {
+            return;
+          }
+
+          if (updated.updated_at && updated.updated_at === lastAppliedUpdatedAt.current) {
+            return;
+          }
+          lastAppliedUpdatedAt.current = updated.updated_at || null;
+
           setEditedSermon(prev => {
             const merged = { ...prev };
-            // Only update fields the current user is NOT actively typing in
             if (focusedField.current !== 'title') merged.title = updated.title ?? prev.title;
             if (focusedField.current !== 'theme') merged.theme = updated.theme ?? prev.theme;
             if (focusedField.current !== 'scripture') merged.scripture = updated.scripture ?? prev.scripture;
@@ -70,11 +81,13 @@ const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onD
                 bottomLine: updated.custom_fields?.bottomLine ?? prev.customFields?.bottomLine
               };
             }
-            if (updated.ai_content && updated.ai_content !== prev.ai_content) {
-              setAiContent(updated.ai_content);
-            }
+            (merged as any).ai_content = updated.ai_content ?? (prev as any).ai_content;
             return merged;
           });
+
+          if (updated.ai_content !== undefined) {
+            setAiContent(updated.ai_content || '');
+          }
         }
       )
       .subscribe((status: string) => {
@@ -86,7 +99,6 @@ const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onD
     };
   }, [sermon.id]);
 
-  // Autosave
   useEffect(() => {
     if (isFirstRender.current) {
       isFirstRender.current = false;
@@ -102,6 +114,7 @@ const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onD
           ...editedSermon,
           date: editedSermon.date instanceof Date ? editedSermon.date : new Date(editedSermon.date)
         };
+        lastLocalSaveAt.current = Date.now();
         await onSave(sermonToSave, false);
         setSaveStatus('saved');
         setTimeout(() => setSaveStatus('idle'), 3000);
@@ -153,7 +166,9 @@ const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onD
           ai_content: generated,
           date: editedSermon.date instanceof Date ? editedSermon.date : new Date(editedSermon.date)
         } as any;
+        lastLocalSaveAt.current = Date.now();
         await onSave(sermonWithAI, false);
+        setEditedSermon(sermonWithAI);
         setSaveStatus('saved');
         setTimeout(() => setSaveStatus('idle'), 3000);
       } else if (data?.error) {
@@ -191,7 +206,6 @@ const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onD
   return (
     <div className="p-6 space-y-6 bg-black min-h-screen">
 
-      {/* Live collaboration banner */}
       {isLive && (
         <div className="flex items-center gap-2 bg-green-950 border border-green-800 rounded-lg px-4 py-2 text-green-400 text-sm">
           <Radio className="h-3 w-3 animate-pulse" />
@@ -242,7 +256,6 @@ const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onD
         </div>
       </div>
 
-      {/* AI ASSISTANT BOX */}
       <Card className="bg-gray-950 border border-green-900">
         <CardHeader>
           <div className="flex items-center justify-between">
