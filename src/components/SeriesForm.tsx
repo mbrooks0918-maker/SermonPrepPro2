@@ -134,7 +134,11 @@ const SeriesForm: React.FC<SeriesFormProps> = ({ series, onSave, onCancel }) => 
       color: formData.color,
       startDate,
       endDate,
-      sermons: series?.sermons || [],
+      // Marking the series Unscheduled clears every sermon's date too, so the
+      // detail view shown right after saving reflects it without a refresh.
+      sermons: formData.unscheduled
+        ? (series?.sermons || []).map(s => ({ ...s, date: null as any }))
+        : (series?.sermons || []),
       collaborators: series?.collaborators || [],
       status: formData.status,
       artwork: formData.artworkUrl || null,

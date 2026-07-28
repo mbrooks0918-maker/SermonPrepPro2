@@ -109,17 +109,45 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  // A date value counts only if present and parseable.
+  const hasValidDate = (value: any): boolean => {
+    if (value === null || value === undefined || value === '') return false;
+    return !isNaN(new Date(value).getTime());
+  };
+
   const updateSeries = async (updatedSeries: SermonSeries) => {
     try {
-      const existingSeries = sermonSeries.find(s => s.id === updatedSeries.id) || 
+      const existingSeries = sermonSeries.find(s => s.id === updatedSeries.id) ||
                             archivedSeries.find(s => s.id === updatedSeries.id);
       if (!existingSeries) {
         throw new Error('Series not found');
       }
-      
+
       await sermonSeriesService.update(updatedSeries.id, updatedSeries);
-      setSermonSeries(prev => prev.map(s => s.id === updatedSeries.id ? updatedSeries : s));
-      setArchivedSeries(prev => prev.map(s => s.id === updatedSeries.id ? updatedSeries : s));
+
+      // When the series is saved as Unscheduled (both dates null/empty), clear
+      // the date on every sermon in it too. Only do this when BOTH dates are
+      // absent — a series with valid dates leaves its sermons untouched.
+      const start = (updatedSeries as any).startDate ?? (updatedSeries as any).start_date;
+      const end = (updatedSeries as any).endDate ?? (updatedSeries as any).end_date;
+      const markedUnscheduled = !hasValidDate(start) && !hasValidDate(end);
+
+      let nextSeries = updatedSeries;
+      if (markedUnscheduled) {
+        const seriesSermons = existingSeries.sermons || [];
+        const hasDatedSermon = seriesSermons.some(s => hasValidDate((s as any).date));
+        if (hasDatedSermon) {
+          await sermonService.clearDatesBySeriesId(updatedSeries.id);
+          // Mirror the cleared dates in local state so the UI updates immediately.
+          nextSeries = {
+            ...updatedSeries,
+            sermons: seriesSermons.map(s => ({ ...s, date: null as any }))
+          };
+        }
+      }
+
+      setSermonSeries(prev => prev.map(s => s.id === nextSeries.id ? nextSeries : s));
+      setArchivedSeries(prev => prev.map(s => s.id === nextSeries.id ? nextSeries : s));
     } catch (error) {
       console.error('Error updating series:', error);
       throw error;

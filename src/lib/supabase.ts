@@ -321,5 +321,31 @@ export const sermonService = {
       const updated = existing.filter((s: Sermon) => s.id !== id)
       saveToStorage(SERMONS_STORAGE_KEY, updated)
     }
+  },
+
+  // Clear the date on every sermon in a series (used when a series is marked
+  // Unscheduled). Bumps updated_at so Realtime consumers pick up the change.
+  async clearDatesBySeriesId(seriesId: string): Promise<void> {
+    if (!supabase) {
+      const existing = getFromStorage(SERMONS_STORAGE_KEY)
+      const updated = existing.map((s: Sermon) =>
+        (s as any).series_id === seriesId
+          ? { ...s, date: null, updated_at: new Date().toISOString() }
+          : s
+      )
+      saveToStorage(SERMONS_STORAGE_KEY, updated)
+      return
+    }
+
+    try {
+      const { error } = await supabase
+        .from('sermons')
+        .update({ date: null, updated_at: new Date().toISOString() })
+        .eq('series_id', seriesId)
+
+      if (error) throw error
+    } catch (error) {
+      console.warn('Supabase error clearing sermon dates:', error)
+    }
   }
 }
