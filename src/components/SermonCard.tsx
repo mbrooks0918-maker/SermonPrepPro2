@@ -20,22 +20,22 @@ const SermonCard: React.FC<SermonCardProps> = ({
   onEdit, 
   onDelete 
 }) => {
-  const formatDate = (date: Date | string) => {
-    if (!date) return 'No date set';
-    
+  const formatDate = (date: Date | string | null | undefined) => {
+    if (date === null || date === undefined || date === '') return 'Unscheduled';
+
     // Handle date string to prevent timezone issues
+    let dateObj: Date;
     if (typeof date === 'string') {
       // Split the date string and create a local date
       const [year, month, day] = date.split('T')[0].split('-');
-      const localDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-      return localDate.toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric'
-      });
+      dateObj = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+    } else {
+      dateObj = date;
     }
-    
-    const dateObj = date;
+
+    // Guard against unparseable values so we never render "Invalid Date".
+    if (isNaN(dateObj.getTime())) return 'Unscheduled';
+
     return dateObj.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
@@ -67,7 +67,7 @@ const SermonCard: React.FC<SermonCardProps> = ({
           <div className="flex items-center gap-1">
             <Calendar className="h-4 w-4" />
             <span>
-              {sermon.date ? formatDate(sermon.date) : 'No date set'}
+              {formatDate(sermon.date)}
             </span>
           </div>
         </div>

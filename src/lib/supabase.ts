@@ -259,7 +259,12 @@ export const sermonService = {
       if ('description' in updates) updateData.description = updates.description
       if ('scripture' in updates) updateData.scripture = updates.scripture
       if ('theme' in updates) updateData.theme = updates.theme
-      if ('date' in updates) updateData.date = updates.date
+      // Persist NULL when the date is cleared or unparseable — never '' or an
+      // Invalid Date object, so a cleared sermon reads back as unscheduled.
+      if ('date' in updates) {
+        const d: any = updates.date
+        updateData.date = d && !isNaN(new Date(d).getTime()) ? d : null
+      }
       if ('notes' in updates) updateData.notes = updates.notes
       if ('serviceAgenda' in updates) updateData.service_agenda = updates.serviceAgenda
       if ('songs' in updates) updateData.songs = updates.songs

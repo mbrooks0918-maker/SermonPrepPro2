@@ -112,7 +112,7 @@ const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onD
       try {
         const sermonToSave = {
           ...editedSermon,
-          date: editedSermon.date instanceof Date ? editedSermon.date : new Date(editedSermon.date)
+          date: editedSermon.date ? (editedSermon.date instanceof Date ? editedSermon.date : new Date(editedSermon.date)) : null
         };
         lastLocalSaveAt.current = Date.now();
         await onSave(sermonToSave, false);
@@ -133,6 +133,22 @@ const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onD
     if (!date) return;
     const localDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
     setEditedSermon({ ...editedSermon, date: localDate });
+  };
+
+  // Clear the sermon's date without deleting the sermon; it becomes "Unscheduled".
+  const handleClearDate = () => {
+    setEditedSermon({ ...editedSermon, date: null as any });
+  };
+
+  // Parse the current sermon date safely; returns null when missing/unparseable
+  // so we never feed an Invalid Date to date-fns' format().
+  const getSermonDate = (): Date | null => {
+    const value = editedSermon.date;
+    if (!value) return null;
+    const dateObj = value instanceof Date
+      ? value
+      : new Date(value.toString().split('T')[0] + 'T00:00:00');
+    return isNaN(dateObj.getTime()) ? null : dateObj;
   };
 
   const handleGenerateAI = async () => {
@@ -164,7 +180,7 @@ const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onD
         const sermonWithAI = {
           ...editedSermon,
           ai_content: generated,
-          date: editedSermon.date instanceof Date ? editedSermon.date : new Date(editedSermon.date)
+          date: editedSermon.date ? (editedSermon.date instanceof Date ? editedSermon.date : new Date(editedSermon.date)) : null
         } as any;
         lastLocalSaveAt.current = Date.now();
         await onSave(sermonWithAI, false);
@@ -352,26 +368,37 @@ const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onD
             </div>
             <div>
               <Label htmlFor="date" className="text-white">Date</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start text-left font-normal bg-black text-white border-gray-700 hover:bg-gray-800"
-                  >
-                    <Calendar className="mr-2 h-4 w-4" />
-                    {editedSermon.date ? format(editedSermon.date instanceof Date ? editedSermon.date : new Date(editedSermon.date.toString().split('T')[0] + 'T00:00:00'), 'PPP') : 'Pick a date'}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0 bg-black border-gray-700">
-                  <CalendarComponent
-                    mode="single"
-                    selected={editedSermon.date ? (editedSermon.date instanceof Date ? editedSermon.date : new Date(editedSermon.date.toString().split('T')[0] + 'T00:00:00')) : undefined}
-                    onSelect={handleDateChange}
-                    initialFocus
-                    className="bg-black text-white"
-                  />
-                </PopoverContent>
-              </Popover>
+              <div className="flex gap-2">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="flex-1 justify-start text-left font-normal bg-black text-white border-gray-700 hover:bg-gray-800"
+                    >
+                      <Calendar className="mr-2 h-4 w-4" />
+                      {getSermonDate() ? format(getSermonDate() as Date, 'PPP') : 'Unscheduled'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0 bg-black border-gray-700">
+                    <CalendarComponent
+                      mode="single"
+                      selected={getSermonDate() ?? undefined}
+                      onSelect={handleDateChange}
+                      initialFocus
+                      className="bg-black text-white"
+                    />
+                  </PopoverContent>
+                </Popover>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleClearDate}
+                  disabled={!editedSermon.date}
+                  className="bg-black text-white border-gray-700 hover:bg-gray-800"
+                >
+                  Clear Date
+                </Button>
+              </div>
             </div>
             <div>
               <Label htmlFor="communicator" className="text-white">Communicator</Label>
