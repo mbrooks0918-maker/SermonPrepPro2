@@ -60,14 +60,30 @@ export const CalendarProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     ));
   };
 
+  // A date value is usable only if it is present and parseable.
+  const hasValidDate = (value: any): boolean => {
+    if (value === null || value === undefined || value === '') return false;
+    return !isNaN(new Date(value).getTime());
+  };
+
+  // A series is "unscheduled" when it has neither a start nor an end date.
+  // Unscheduled series are kept off the calendar entirely.
+  const isUnscheduledSeries = (series: any): boolean => {
+    const start = series.startDate ?? series.start_date;
+    const end = series.endDate ?? series.end_date;
+    return !hasValidDate(start) && !hasValidDate(end);
+  };
+
   // Function to sync all events from sermon series data
   const syncEventsFromSermons = (sermonSeries: any[]) => {
     const newEvents: CalendarEvent[] = [];
-    
+
     sermonSeries.forEach(series => {
+      // Skip unscheduled series so they never appear on the calendar.
+      if (isUnscheduledSeries(series)) return;
       if (series.sermons) {
         series.sermons.forEach((sermon: any) => {
-          if (sermon.date) {
+          if (hasValidDate(sermon.date)) {
             const eventId = `${series.id}-sermon-${sermon.title.replace(/\s+/g, '-').toLowerCase()}`;
             
             // Handle date properly

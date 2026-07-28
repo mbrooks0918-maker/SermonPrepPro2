@@ -44,11 +44,11 @@ const SeriesDetail: React.FC<SeriesDetailProps> = ({
   };
 
   // Safely format a date that may be missing, a string, or unparseable.
-  // Returns 'No date set' instead of letting `new Date(...)` render 'Invalid Date'.
+  // Returns 'Unscheduled' instead of letting `new Date(...)` render 'Invalid Date'.
   const formatDate = (value: unknown): string => {
-    if (value === null || value === undefined || value === '') return 'No date set';
+    if (value === null || value === undefined || value === '') return 'Unscheduled';
     const date = new Date(value as string | number | Date);
-    return isNaN(date.getTime()) ? 'No date set' : date.toLocaleDateString();
+    return isNaN(date.getTime()) ? 'Unscheduled' : date.toLocaleDateString();
   };
 
   // Series loaded from Supabase carry snake_case `start_date`/`end_date`, while
@@ -56,8 +56,8 @@ const SeriesDetail: React.FC<SeriesDetailProps> = ({
   const startLabel = formatDate((series as any).startDate ?? (series as any).start_date);
   const endLabel = formatDate((series as any).endDate ?? (series as any).end_date);
   const dateRangeLabel =
-    startLabel === 'No date set' && endLabel === 'No date set'
-      ? 'No date set'
+    startLabel === 'Unscheduled' && endLabel === 'Unscheduled'
+      ? 'Unscheduled'
       : `${startLabel} - ${endLabel}`;
 
   const handleSermonClick = (sermon: Sermon) => {

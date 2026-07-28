@@ -22,19 +22,43 @@ const SeriesForm: React.FC<SeriesFormProps> = ({ series, onSave, onCancel }) => 
     summary: '',
     color: '#3b82f6',
     status: 'planning' as const,
+    startDate: '',
+    endDate: '',
+    unscheduled: false,
     artworkUrl: '' as string,
     bumperVideoUrl: '' as string
   });
   const [uploading, setUploading] = useState({ artwork: false, video: false });
 
+  // Normalize any date value (Date, ISO string, snake_case row value) into the
+  // YYYY-MM-DD string an <input type="date"> expects. Returns '' when unusable.
+  const toDateInputValue = (value: unknown): string => {
+    if (!value) return '';
+    if (typeof value === 'string') {
+      const match = value.match(/^\d{4}-\d{2}-\d{2}/);
+      if (match) return match[0];
+    }
+    const date = new Date(value as string | number | Date);
+    if (isNaN(date.getTime())) return '';
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
+
   useEffect(() => {
     if (series) {
+      const start = toDateInputValue((series as any).startDate ?? (series as any).start_date);
+      const end = toDateInputValue((series as any).endDate ?? (series as any).end_date);
       setFormData({
         title: series.title,
         description: series.description,
         summary: series.summary,
         color: series.color,
         status: series.status,
+        startDate: start,
+        endDate: end,
+        unscheduled: !start && !end,
         artworkUrl: typeof series.artwork === 'string' ? series.artwork : '',
         bumperVideoUrl: typeof series.bumperVideo === 'string' ? series.bumperVideo : ''
       });
@@ -86,28 +110,37 @@ const SeriesForm: React.FC<SeriesFormProps> = ({ series, onSave, onCancel }) => 
     setUploading(prev => ({ ...prev, [type]: false }));
   };
 
+  // Parse a YYYY-MM-DD input string into a local Date, or null when empty.
+  const parseInputDate = (value: string): Date | null => {
+    if (!value) return null;
+    const [y, m, d] = value.split('-').map(Number);
+    if (!y || !m || !d) return null;
+    return new Date(y, m - 1, d);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    const today = new Date();
-    const endDate = new Date(today);
-    endDate.setDate(today.getDate() + 28);
-    
+
+    // When "Unscheduled" is checked, dates are cleared entirely (null) so the
+    // series is treated as having no schedule and is kept off the calendar.
+    const startDate = formData.unscheduled ? null : parseInputDate(formData.startDate);
+    const endDate = formData.unscheduled ? null : parseInputDate(formData.endDate);
+
     const seriesData: SermonSeries = {
       id: series?.id || Date.now().toString(),
       title: formData.title,
       description: formData.description,
       summary: formData.summary,
       color: formData.color,
-      startDate: today,
-      endDate: endDate,
+      startDate,
+      endDate,
       sermons: series?.sermons || [],
       collaborators: series?.collaborators || [],
       status: formData.status,
       artwork: formData.artworkUrl || null,
       bumperVideo: formData.bumperVideoUrl || null
     };
-    
+
     onSave(seriesData);
   };
 
@@ -203,6 +236,52 @@ const SeriesForm: React.FC<SeriesFormProps> = ({ series, onSave, onCancel }) => 
                 onChange={(e) => handleChange('color', e.target.value)}
                 className="bg-black border-gray-700"
               />
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <input
+                  id="unscheduled"
+                  type="checkbox"
+                  checked={formData.unscheduled}
+                  onChange={(e) => setFormData(prev => ({
+                    ...prev,
+                    unscheduled: e.target.checked,
+                    // Clearing the dates when marking unscheduled keeps them off the calendar.
+                    startDate: e.target.checked ? '' : prev.startDate,
+                    endDate: e.target.checked ? '' : prev.endDate
+                  }))}
+                  className="h-4 w-4 accent-green-500"
+                />
+                <Label htmlFor="unscheduled" className="text-white font-medium">
+                  Unscheduled (no start or end date)
+                </Label>
+              </div>
+
+              {!formData.unscheduled && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="startDate" className="text-white font-medium">Start Date</Label>
+                    <Input
+                      id="startDate"
+                      type="date"
+                      value={formData.startDate}
+                      onChange={(e) => handleChange('startDate', e.target.value)}
+                      className="bg-black text-white border-gray-700"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="endDate" className="text-white font-medium">End Date</Label>
+                    <Input
+                      id="endDate"
+                      type="date"
+                      value={formData.endDate}
+                      onChange={(e) => handleChange('endDate', e.target.value)}
+                      className="bg-black text-white border-gray-700"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

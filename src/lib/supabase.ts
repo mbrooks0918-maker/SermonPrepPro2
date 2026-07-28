@@ -70,8 +70,8 @@ export const sermonSeriesService = {
           description: series.description,
           summary: series.summary,
           color: series.color,
-          start_date: series.startDate,
-          end_date: series.endDate,
+          start_date: series.startDate || null,
+          end_date: series.endDate || null,
           status: series.status || 'planning',
           artwork: series.artwork,
           bumperVideo: series.bumperVideo
@@ -106,8 +106,10 @@ export const sermonSeriesService = {
       if ('description' in updates) updateData.description = updates.description
       if ('summary' in updates) updateData.summary = updates.summary
       if ('color' in updates) updateData.color = updates.color
-      if ('startDate' in updates) updateData.start_date = updates.startDate
-      if ('endDate' in updates) updateData.end_date = updates.endDate
+      // Persist NULL (not '') when a date is cleared, so unscheduled series
+      // store no date and are correctly treated as having no schedule.
+      if ('startDate' in updates) updateData.start_date = updates.startDate || null
+      if ('endDate' in updates) updateData.end_date = updates.endDate || null
       if ('status' in updates) updateData.status = updates.status
       if ('artwork' in updates) updateData.artwork = updates.artwork
       if ('bumperVideo' in updates) updateData.bumperVideo = updates.bumperVideo
