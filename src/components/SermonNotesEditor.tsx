@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import {
   Bold, Italic, Underline, Heading1, Heading2, Pilcrow,
   List, ListOrdered, AlignLeft, AlignCenter, AlignRight,
-  Undo, Redo, Eraser, Printer
+  Undo, Redo, Eraser, Printer, Baseline, Highlighter
 } from 'lucide-react';
 
 interface SermonNotesEditorProps {
@@ -18,10 +18,29 @@ interface SermonNotesEditorProps {
 // render it as plain text so legacy plain-text notes stay intact and safe.
 const looksLikeHtml = (value: string) => /<[a-z][\s\S]*>/i.test(value || '');
 
+const FONT_FAMILIES: { label: string; value: string }[] = [
+  { label: 'Georgia', value: "Georgia, 'Times New Roman', serif" },
+  { label: 'Times New Roman', value: "'Times New Roman', Times, serif" },
+  { label: 'Garamond', value: "Garamond, 'Times New Roman', serif" },
+  { label: 'Arial', value: 'Arial, Helvetica, sans-serif' },
+  { label: 'Helvetica', value: 'Helvetica, Arial, sans-serif' },
+  { label: 'Verdana', value: 'Verdana, Geneva, sans-serif' },
+  { label: 'Trebuchet MS', value: "'Trebuchet MS', Helvetica, sans-serif" },
+  { label: 'Courier New', value: "'Courier New', Courier, monospace" },
+];
+
+const FONT_SIZES = [10, 11, 12, 13, 14, 16, 18, 20, 24, 28, 32, 40, 48];
+
 const SermonNotesEditor: React.FC<SermonNotesEditorProps> = ({
   value, onChange, title, onFocus, onBlur
 }) => {
   const editorRef = useRef<HTMLDivElement>(null);
+  const savedRange = useRef<Range | null>(null);
+
+  // Prefer inline CSS styling for commands (color/font apply as style attrs).
+  useEffect(() => {
+    try { document.execCommand('styleWithCSS', false, 'true'); } catch (e) { /* noop */ }
+  }, []);
 
   // Sync incoming value into the editor without stealing the caret while the
   // pastor is typing (also lets live/Realtime updates flow in when unfocused).
@@ -30,8 +49,7 @@ const SermonNotesEditor: React.FC<SermonNotesEditorProps> = ({
     if (!el) return;
     if (document.activeElement === el) return;
     const incoming = value || '';
-    const current = el.innerHTML;
-    if (incoming === current) return;
+    if (incoming === el.innerHTML) return;
     if (looksLikeHtml(incoming) || incoming === '') {
       el.innerHTML = incoming;
     } else {
@@ -43,10 +61,50 @@ const SermonNotesEditor: React.FC<SermonNotesEditorProps> = ({
     if (editorRef.current) onChange(editorRef.current.innerHTML);
   };
 
-  const exec = (command: string, arg?: string) => {
-    editorRef.current?.focus();
+  // Remember the current selection so toolbar dropdowns / color pickers (which
+  // steal focus from the editor) can restore it before applying a command.
+  const saveSelection = () => {
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0 && editorRef.current?.contains(sel.anchorNode)) {
+      savedRange.current = sel.getRangeAt(0);
+    }
+  };
+
+  const restoreSelection = () => {
+    const el = editorRef.current;
+    if (!el) return;
+    el.focus();
+    const range = savedRange.current;
+    if (!range || !el.contains(range.commonAncestorContainer)) return;
+    const sel = window.getSelection();
+    if (!sel) return;
+    sel.removeAllRanges();
+    sel.addRange(range);
+  };
+
+  const runCommand = (command: string, arg?: string) => {
+    restoreSelection();
     document.execCommand(command, false, arg);
     emitChange();
+    saveSelection();
+  };
+
+  // execCommand('fontSize') only accepts 1–7, so apply the size, then rewrite
+  // the resulting <font size> nodes to the exact pixel size requested.
+  const applyFontSize = (px: number) => {
+    const el = editorRef.current;
+    if (!el) return;
+    restoreSelection();
+    document.execCommand('styleWithCSS', false, 'false');
+    document.execCommand('fontSize', false, '7');
+    document.execCommand('styleWithCSS', false, 'true');
+    el.querySelectorAll('font[size="7"]').forEach((node) => {
+      const font = node as HTMLElement;
+      font.removeAttribute('size');
+      font.style.fontSize = `${px}px`;
+    });
+    emitChange();
+    saveSelection();
   };
 
   const handlePrint = () => {
@@ -97,10 +155,77 @@ const SermonNotesEditor: React.FC<SermonNotesEditorProps> = ({
     { kind: 'btn', icon: Eraser, label: 'Clear formatting', command: 'removeFormat' },
   ];
 
+  const selectClass =
+    'h-8 rounded border border-gray-600 bg-gray-700 px-2 text-sm text-gray-100 focus:outline-none';
+
   return (
     <div className="rounded-lg border border-gray-700 overflow-hidden">
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-1 border-b border-gray-700 bg-gray-800 p-2">
+        {/* Font family */}
+        <select
+          title="Font"
+          aria-label="Font family"
+          className={selectClass}
+          onMouseDown={saveSelection}
+          onChange={(e) => runCommand('fontName', e.target.value)}
+          defaultValue=""
+        >
+          <option value="" disabled>Font</option>
+          {FONT_FAMILIES.map((f) => (
+            <option key={f.label} value={f.value} style={{ fontFamily: f.value }}>{f.label}</option>
+          ))}
+        </select>
+
+        {/* Font size */}
+        <select
+          title="Font size"
+          aria-label="Font size"
+          className={selectClass}
+          onMouseDown={saveSelection}
+          onChange={(e) => { applyFontSize(Number(e.target.value)); }}
+          defaultValue=""
+        >
+          <option value="" disabled>Size</option>
+          {FONT_SIZES.map((s) => (
+            <option key={s} value={s}>{s}</option>
+          ))}
+        </select>
+
+        {/* Text color */}
+        <label
+          title="Text color"
+          className="flex items-center gap-1 rounded px-1 text-gray-200 hover:bg-gray-700 cursor-pointer"
+          onMouseDown={saveSelection}
+        >
+          <Baseline className="h-4 w-4" />
+          <input
+            type="color"
+            aria-label="Text color"
+            defaultValue="#000000"
+            className="h-6 w-6 cursor-pointer border-0 bg-transparent p-0"
+            onChange={(e) => runCommand('foreColor', e.target.value)}
+          />
+        </label>
+
+        {/* Highlight color */}
+        <label
+          title="Highlight color"
+          className="flex items-center gap-1 rounded px-1 text-gray-200 hover:bg-gray-700 cursor-pointer"
+          onMouseDown={saveSelection}
+        >
+          <Highlighter className="h-4 w-4" />
+          <input
+            type="color"
+            aria-label="Highlight color"
+            defaultValue="#ffff00"
+            className="h-6 w-6 cursor-pointer border-0 bg-transparent p-0"
+            onChange={(e) => runCommand('hiliteColor', e.target.value)}
+          />
+        </label>
+
+        <span className="mx-1 h-5 w-px bg-gray-600" />
+
         {tools.map((tool, i) =>
           tool.kind === 'sep' ? (
             <span key={i} className="mx-1 h-5 w-px bg-gray-600" />
@@ -112,13 +237,14 @@ const SermonNotesEditor: React.FC<SermonNotesEditorProps> = ({
               aria-label={tool.label}
               // Keep the editor selection while clicking a toolbar button.
               onMouseDown={(e) => e.preventDefault()}
-              onClick={() => exec(tool.command, tool.arg)}
+              onClick={() => runCommand(tool.command, tool.arg)}
               className="p-2 rounded text-gray-200 hover:bg-gray-700"
             >
               <tool.icon className="h-4 w-4" />
             </button>
           )
         )}
+
         <div className="ml-auto">
           <Button
             type="button"
@@ -142,6 +268,8 @@ const SermonNotesEditor: React.FC<SermonNotesEditorProps> = ({
           onInput={emitChange}
           onFocus={onFocus}
           onBlur={onBlur}
+          onKeyUp={saveSelection}
+          onMouseUp={saveSelection}
           data-placeholder="Start writing your sermon notes..."
           className="sermon-doc bg-white text-black shadow-2xl outline-none"
           style={{
