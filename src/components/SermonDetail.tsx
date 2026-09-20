@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Trash2, Calendar, Sparkles, RefreshCw, Check, Loader2, Radio } from 'lucide-react';
+import { ArrowLeft, Trash2, Calendar, Sparkles, RefreshCw, Check, Loader2, Radio, SlidersHorizontal, ChevronDown, ChevronUp } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
@@ -30,6 +30,20 @@ const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onD
   const [isLoadingAI, setIsLoadingAI] = useState(false);
   const [aiError, setAiError] = useState<string>('');
   const [isLive, setIsLive] = useState(false);
+  const [showInstructions, setShowInstructions] = useState(false);
+
+  // Per-sermon AI instruction override (stored on the sermon's customFields).
+  // When blank, the global Settings instructions are used.
+  const sermonInstructions: string = (editedSermon.customFields as any)?.aiInstructions || '';
+  const usingCustomInstructions = sermonInstructions.trim().length > 0;
+  const activeInstructions = usingCustomInstructions ? sermonInstructions : settings.aiInstructions;
+
+  const setSermonInstructions = (text: string) => {
+    setEditedSermon({
+      ...editedSermon,
+      customFields: { ...editedSermon.customFields, aiInstructions: text }
+    });
+  };
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isFirstRender = useRef(true);
   const focusedField = useRef<string | null>(null);
@@ -172,7 +186,7 @@ const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onD
       const response = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, scripture, theme, instructions: settings.aiInstructions }),
+        body: JSON.stringify({ title, scripture, theme, instructions: activeInstructions }),
       });
 
       const data = await response.json();
@@ -303,6 +317,63 @@ const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onD
           <p className="text-gray-300 text-sm mt-1">
             Hopefully, this will be helpful content and give you a head start preparing this message.
           </p>
+
+          {/* Per-sermon AI instruction override */}
+          <div className="mt-3">
+            <button
+              type="button"
+              onClick={() => setShowInstructions((v) => !v)}
+              className="flex items-center gap-2 text-sm text-green-300 hover:text-green-200"
+            >
+              <SlidersHorizontal className="h-4 w-4" />
+              AI instructions for this sermon
+              {usingCustomInstructions && (
+                <Badge variant="secondary" className="bg-green-900 text-green-200">Custom</Badge>
+              )}
+              {showInstructions ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </button>
+
+            {showInstructions && (
+              <div className="mt-2 space-y-2">
+                <p className="text-xs text-gray-400">
+                  Overrides your global Settings instructions for this sermon only. Leave blank to use
+                  the global instructions. Use <code className="text-green-400">{'{{title}}'}</code>,{' '}
+                  <code className="text-green-400">{'{{scripture}}'}</code>, and{' '}
+                  <code className="text-green-400">{'{{theme}}'}</code> as placeholders.
+                </p>
+                <Textarea
+                  value={sermonInstructions}
+                  onFocus={() => { focusedField.current = 'aiInstructions'; }}
+                  onBlur={() => { focusedField.current = null; }}
+                  onChange={(e) => setSermonInstructions(e.target.value)}
+                  placeholder="Leave blank to use your global Settings instructions..."
+                  className="min-h-[160px] bg-black text-white border-gray-700 font-mono text-xs leading-relaxed"
+                  spellCheck={false}
+                />
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setSermonInstructions(settings.aiInstructions)}
+                    className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"
+                  >
+                    Start from global
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setSermonInstructions('')}
+                    disabled={!usingCustomInstructions}
+                    className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"
+                  >
+                    Clear override
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           {aiError && (
