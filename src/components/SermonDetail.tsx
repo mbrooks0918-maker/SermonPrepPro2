@@ -13,6 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import SermonNotesEditor from './SermonNotesEditor';
+import { useSettings } from '@/contexts/SettingsContext';
 
 interface SermonDetailProps {
   sermon: Sermon;
@@ -22,6 +23,7 @@ interface SermonDetailProps {
 }
 
 const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onDelete }) => {
+  const { settings } = useSettings();
   const [editedSermon, setEditedSermon] = useState<Sermon>(sermon);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [aiContent, setAiContent] = useState<string>((sermon as any).ai_content || '');
@@ -170,7 +172,7 @@ const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onD
       const response = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, scripture, theme }),
+        body: JSON.stringify({ title, scripture, theme, instructions: settings.aiInstructions }),
       });
 
       const data = await response.json();
@@ -453,6 +455,8 @@ const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onD
             <SermonNotesEditor
               value={editedSermon.notes || ''}
               title={editedSermon.title}
+              defaultFontFamily={settings.notesFontFamily}
+              defaultFontSize={settings.notesFontSize}
               onChange={(html) => setEditedSermon({ ...editedSermon, notes: html })}
               onFocus={() => { focusedField.current = 'notes'; }}
               onBlur={() => { focusedField.current = null; }}

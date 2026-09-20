@@ -5,7 +5,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { title, scripture, theme } = req.body;
+  const { title, scripture, theme, instructions } = req.body;
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
 
@@ -13,7 +13,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ error: 'API key not configured. Please contact your administrator.' });
   }
 
-  const prompt = `You are a sermon preparation assistant for LifePoint Church. The lead pastor teaches in the style of Andy Stanley. The goal of every message is to identify a real tension the biblical text addresses and hopefully resolves — because tension is what makes people lean in. Implications are raw material: data, facts, cultural observations, historical context, or insights related to the text that might help illuminate the tension or resolution. Think of implications as things thrown against the wall to see what sticks.
+  // If the client supplied custom AI instructions (from Settings), use them and
+  // fill in the sermon placeholders. Otherwise fall back to the default prompt.
+  const fillPlaceholders = (template: string) =>
+    template
+      .split('{{title}}').join(title || 'Not yet set')
+      .split('{{scripture}}').join(scripture || 'Not yet set')
+      .split('{{theme}}').join(theme || 'Not yet set');
+
+  const defaultPrompt = `You are a sermon preparation assistant for LifePoint Church. The lead pastor teaches in the style of Andy Stanley. The goal of every message is to identify a real tension the biblical text addresses and hopefully resolves — because tension is what makes people lean in. Implications are raw material: data, facts, cultural observations, historical context, or insights related to the text that might help illuminate the tension or resolution. Think of implications as things thrown against the wall to see what sticks.
 
 Here are the sermon details:
 
@@ -64,6 +72,10 @@ Brief notes for the creative and worship team including:
 ---
 
 Keep the tone conversational, honest, and practical. Avoid academic or overly religious language. Write as if you are helping a pastor who wants their congregation to actually engage with and apply Scripture — not just hear a lecture.`;
+
+  const prompt = (typeof instructions === 'string' && instructions.trim())
+    ? fillPlaceholders(instructions)
+    : defaultPrompt;
 
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {

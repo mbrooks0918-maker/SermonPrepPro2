@@ -1,8 +1,8 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Calendar, BookOpen, Archive } from 'lucide-react';
+import { Calendar, BookOpen, Archive, Settings } from 'lucide-react';
 
-export type TabType = 'series' | 'calendar' | 'archived';
+export type TabType = 'series' | 'calendar' | 'archived' | 'settings';
 
 interface TopTabsProps {
   activeTab: TabType;
@@ -15,6 +15,7 @@ const TopTabs: React.FC<TopTabsProps> = ({ activeTab, onTabChange, onSeriesTabCl
     { id: 'series' as TabType, label: 'Sermon Series', icon: BookOpen },
     { id: 'calendar' as TabType, label: 'Calendar', icon: Calendar },
     { id: 'archived' as TabType, label: 'Archived Series', icon: Archive },
+    { id: 'settings' as TabType, label: 'Settings', icon: Settings },
   ];
 
   return (

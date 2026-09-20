@@ -11,6 +11,7 @@ import { CalendarIcon, Save, ArrowLeft } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useCalendar } from '@/contexts/CalendarContext';
+import { useSettings } from '@/contexts/SettingsContext';
 
 interface SermonFormProps {
   sermon?: Sermon;
@@ -30,6 +31,7 @@ const SermonForm: React.FC<SermonFormProps> = ({
   seriesColor 
 }) => {
   const { addEvent, removeEvent, updateEvent, events } = useCalendar();
+  const { settings } = useSettings();
   const [formData, setFormData] = useState<Partial<Sermon>>({
     title: sermon?.title || '',
     theme: sermon?.theme || '',
@@ -41,7 +43,8 @@ const SermonForm: React.FC<SermonFormProps> = ({
     creativeElements: sermon?.creativeElements || '',
     announcements: sermon?.announcements || '',
     socialMediaPlan: sermon?.socialMediaPlan || '',
-    communicator: sermon?.communicator || '',
+    // New sermons prefill the communicator from Settings.
+    communicator: sermon?.communicator || settings.defaultCommunicator || '',
     status: sermon?.status || 'draft',
     customFields: sermon?.customFields || {}
   });

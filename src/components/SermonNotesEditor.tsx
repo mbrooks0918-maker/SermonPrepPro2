@@ -3,13 +3,18 @@ import { Button } from '@/components/ui/button';
 import {
   Bold, Italic, Underline, Heading1, Heading2, Pilcrow,
   List, ListOrdered, AlignLeft, AlignCenter, AlignRight,
-  Undo, Redo, Eraser, Printer, Baseline, Highlighter
+  Undo, Redo, Eraser, Printer, Baseline, Highlighter, Download, FileText, FileType
 } from 'lucide-react';
+import {
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem
+} from '@/components/ui/dropdown-menu';
 
 interface SermonNotesEditorProps {
   value: string;
   onChange: (html: string) => void;
   title?: string;
+  defaultFontFamily?: string;
+  defaultFontSize?: number;
   onFocus?: () => void;
   onBlur?: () => void;
 }
@@ -32,7 +37,10 @@ const FONT_FAMILIES: { label: string; value: string }[] = [
 const FONT_SIZES = [10, 11, 12, 13, 14, 16, 18, 20, 24, 28, 32, 40, 48];
 
 const SermonNotesEditor: React.FC<SermonNotesEditorProps> = ({
-  value, onChange, title, onFocus, onBlur
+  value, onChange, title,
+  defaultFontFamily = "Georgia, 'Times New Roman', serif",
+  defaultFontSize = 12,
+  onFocus, onBlur
 }) => {
   const editorRef = useRef<HTMLDivElement>(null);
   const savedRange = useRef<Range | null>(null);
@@ -107,27 +115,63 @@ const SermonNotesEditor: React.FC<SermonNotesEditorProps> = ({
     saveSelection();
   };
 
-  const handlePrint = () => {
+  const docTitle = () => (title && title.trim()) ? title.trim() : 'Sermon Notes';
+  const escapeHtml = (s: string) => s.replace(/</g, '&lt;');
+  const fileSlug = () =>
+    docTitle().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'sermon-notes';
+
+  // Shared document HTML used for both printing and Word export.
+  const buildDocumentHtml = () => {
     const content = editorRef.current?.innerHTML || '';
-    const safeTitle = (title || 'Sermon Notes').replace(/</g, '&lt;');
-    const win = window.open('', '_blank', 'width=850,height=1100');
-    if (!win) return;
-    win.document.write(
-      '<!doctype html><html><head><title>' + safeTitle + '</title>' +
+    const safeTitle = escapeHtml(docTitle());
+    return (
       '<style>' +
       '@page { margin: 1in; }' +
-      "body { font-family: Georgia, 'Times New Roman', serif; color:#000; line-height:1.6; font-size:12pt; }" +
+      'body { font-family:' + defaultFontFamily + '; color:#000; line-height:1.6; font-size:' + defaultFontSize + 'pt; }' +
       'h1 { font-size:22pt; margin:0 0 4px; } h2 { font-size:16pt; margin:14px 0 4px; } h3 { font-size:13pt; }' +
       'ul, ol { margin:8px 0 8px 24px; } p { margin:8px 0; }' +
       '.doc-title { border-bottom:1px solid #999; padding-bottom:8px; margin-bottom:16px; }' +
-      '</style></head><body>' +
+      '</style>' +
       '<h1 class="doc-title">' + safeTitle + '</h1>' +
-      content +
+      content
+    );
+  };
+
+  // Print (also the reliable path to a high-fidelity PDF via "Save as PDF").
+  const handlePrint = () => {
+    const win = window.open('', '_blank', 'width=850,height=1100');
+    if (!win) return;
+    win.document.write(
+      '<!doctype html><html><head><title>' + escapeHtml(docTitle()) + '</title></head><body>' +
+      buildDocumentHtml() +
       '</body></html>'
     );
     win.document.close();
     win.focus();
     win.print();
+  };
+
+  const triggerDownload = (blob: Blob, filename: string) => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
+  // Word export: an HTML document Word opens natively, preserving formatting.
+  const exportWord = () => {
+    const html =
+      "<html xmlns:o='urn:schemas-microsoft-com:office:office' " +
+      "xmlns:w='urn:schemas-microsoft-com:office:word' " +
+      "xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>" +
+      escapeHtml(docTitle()) + '</title></head><body>' +
+      buildDocumentHtml() +
+      '</body></html>';
+    triggerDownload(new Blob(['﻿', html], { type: 'application/msword' }), fileSlug() + '.doc');
   };
 
   type Tool =
@@ -245,17 +289,41 @@ const SermonNotesEditor: React.FC<SermonNotesEditorProps> = ({
           )
         )}
 
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-1">
           <Button
             type="button"
             size="sm"
+            variant="outline"
             onMouseDown={(e) => e.preventDefault()}
             onClick={handlePrint}
-            className="bg-green-900 hover:bg-green-800 text-white flex items-center gap-2"
+            className="bg-gray-800 text-gray-100 border-gray-600 hover:bg-gray-700 flex items-center gap-2"
           >
             <Printer className="h-4 w-4" />
             Print
           </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                size="sm"
+                onMouseDown={(e) => e.preventDefault()}
+                className="bg-green-900 hover:bg-green-800 text-white flex items-center gap-2"
+              >
+                <Download className="h-4 w-4" />
+                Export
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="bg-gray-900 border-gray-700 text-gray-100">
+              <DropdownMenuItem onClick={handlePrint} className="cursor-pointer focus:bg-gray-800">
+                <FileType className="h-4 w-4 mr-2" />
+                PDF (Save as PDF)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={exportWord} className="cursor-pointer focus:bg-gray-800">
+                <FileText className="h-4 w-4 mr-2" />
+                Word (.doc)
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
@@ -277,8 +345,8 @@ const SermonNotesEditor: React.FC<SermonNotesEditorProps> = ({
             maxWidth: '100%',
             minHeight: '11in',
             padding: '1in',
-            fontFamily: "Georgia, 'Times New Roman', serif",
-            fontSize: '12pt',
+            fontFamily: defaultFontFamily,
+            fontSize: `${defaultFontSize}pt`,
             lineHeight: 1.6,
             whiteSpace: 'pre-wrap'
           }}

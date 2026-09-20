@@ -7,6 +7,7 @@ import CalendarView from './CalendarView';
 import ArchivedSeriesList from './ArchivedSeriesList';
 import SeriesForm from './SeriesForm';
 import LoadingSpinner from './LoadingSpinner';
+import SettingsPage from './SettingsPage';
 
 interface MainContentProps {
   activeTab: string;
@@ -96,6 +97,11 @@ const MainContent: React.FC<MainContentProps> = ({ activeTab }) => {
   // Guard against rendering any detail view before series data has loaded from
   // Supabase. Without this, landing directly on a sermon/series detail while
   // sermonSeries is still empty crashes (e.g. reading `series.artwork` of undefined).
+  // Settings tab (available even while sermon data is still loading)
+  if (activeTab === 'settings') {
+    return <SettingsPage />;
+  }
+
   if (loading) {
     return <LoadingSpinner />;
   }
