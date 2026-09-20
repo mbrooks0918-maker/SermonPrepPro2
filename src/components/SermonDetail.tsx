@@ -12,6 +12,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { format } from 'date-fns';
+import SermonNotesEditor from './SermonNotesEditor';
 
 interface SermonDetailProps {
   sermon: Sermon;
@@ -449,14 +450,12 @@ const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onD
         <CardContent className="space-y-4">
           <div>
             <Label htmlFor="notes" className="text-white">Notes</Label>
-            <Textarea
-              id="notes"
-              placeholder="Sermon outline, key points, illustrations..."
-              className="min-h-48 bg-black text-white border-gray-700 placeholder-gray-400"
-              value={editedSermon.notes}
+            <SermonNotesEditor
+              value={editedSermon.notes || ''}
+              title={editedSermon.title}
+              onChange={(html) => setEditedSermon({ ...editedSermon, notes: html })}
               onFocus={() => { focusedField.current = 'notes'; }}
               onBlur={() => { focusedField.current = null; }}
-              onChange={(e) => setEditedSermon({ ...editedSermon, notes: e.target.value })}
             />
           </div>
           <div>

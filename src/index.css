@@ -130,3 +130,18 @@
 .markdown-preview ol {
   @apply my-4 ml-6;
 }
+
+/* Sermon Notes document editor — restore document-style formatting inside the
+   contentEditable page (Tailwind's preflight strips heading sizes / list markers). */
+.sermon-doc h1 { font-size: 1.9em; font-weight: 700; margin: 0.4em 0 0.2em; }
+.sermon-doc h2 { font-size: 1.45em; font-weight: 700; margin: 0.4em 0 0.2em; }
+.sermon-doc h3 { font-size: 1.2em; font-weight: 700; margin: 0.4em 0 0.2em; }
+.sermon-doc p { margin: 0.5em 0; }
+.sermon-doc ul { list-style: disc; margin: 0.5em 0 0.5em 1.5em; }
+.sermon-doc ol { list-style: decimal; margin: 0.5em 0 0.5em 1.5em; }
+.sermon-doc a { color: #1d4ed8; text-decoration: underline; }
+.sermon-doc:empty::before {
+  content: attr(data-placeholder);
+  color: #9ca3af;
+  pointer-events: none;
+}
