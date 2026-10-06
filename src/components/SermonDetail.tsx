@@ -86,6 +86,9 @@ const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onD
             if (focusedField.current !== 'serviceAgenda') merged.serviceAgenda = updated.service_agenda ?? prev.serviceAgenda;
             if (focusedField.current !== 'announcements') merged.announcements = updated.announcements ?? prev.announcements;
             if (focusedField.current !== 'socialMediaPlan') merged.socialMediaPlan = updated.social_media_plan ?? prev.socialMediaPlan;
+            // Sync the date too (the picker isn't a focus-guarded text field), including
+            // clears to null — otherwise an open tab silently reverts external date changes.
+            merged.date = ('date' in updated) ? updated.date : prev.date;
             if (focusedField.current !== 'brainstorming') {
               merged.customFields = {
                 ...prev.customFields,
