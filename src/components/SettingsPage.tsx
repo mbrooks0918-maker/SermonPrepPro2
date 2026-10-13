@@ -1,5 +1,5 @@
 import React from 'react';
-import { useSettings } from '@/contexts/SettingsContext';
+import { useSettings, AI_FONT_SIZES } from '@/contexts/SettingsContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,6 +24,8 @@ const ACCENT_PRESETS = ['#16a34a', '#2563eb', '#7c3aed', '#db2777', '#ea580c', '
 
 const SettingsPage: React.FC = () => {
   const { settings, updateSettings, resetAIInstructions, resetAll } = useSettings();
+
+  const aiSize = AI_FONT_SIZES.find((f) => f.key === settings.aiFontSize) ?? AI_FONT_SIZES[0];
 
   const selectClass =
     'h-10 w-full rounded-md border border-gray-700 bg-black px-3 text-sm text-white focus:outline-none';
@@ -88,7 +90,7 @@ const SettingsPage: React.FC = () => {
             Appearance
           </CardTitle>
           <p className="text-sm text-gray-400 mt-1">
-            Accent color for primary buttons, active tabs, and highlights.
+            Accent color for primary buttons, active tabs, and highlights, plus AI text size.
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -120,6 +122,40 @@ const SettingsPage: React.FC = () => {
             >
               Use default
             </Button>
+          </div>
+
+          {/* AI content reading size */}
+          <div className="pt-4 border-t border-gray-800 space-y-3">
+            <div>
+              <Label className="text-white">AI content text size</Label>
+              <p className="text-sm text-gray-400 mt-1">
+                Size of the text the AI Sermon Assistant generates. Doesn’t change the rest of the app.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2" role="group" aria-label="AI content text size">
+              {AI_FONT_SIZES.map((f) => (
+                <Button
+                  key={f.key}
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  aria-pressed={settings.aiFontSize === f.key}
+                  onClick={() => updateSettings({ aiFontSize: f.key })}
+                  className={
+                    settings.aiFontSize === f.key
+                      ? 'bg-green-900 text-white border-green-700 hover:bg-green-800'
+                      : 'bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700'
+                  }
+                >
+                  {f.label}
+                </Button>
+              ))}
+            </div>
+            <div className="rounded-md border border-gray-800 bg-gray-950 p-3">
+              <p className={`text-gray-300 ${aiSize.className}`}>
+                Preview: The tension is that people want freedom and security at the same time.
+              </p>
+            </div>
           </div>
         </CardContent>
       </Card>

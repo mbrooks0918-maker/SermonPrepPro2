@@ -55,8 +55,20 @@ Brief notes for the creative and worship team including:
 
 Keep the tone conversational, honest, and practical. Avoid academic or overly religious language. Write as if you are helping a pastor who wants their congregation to actually engage with and apply Scripture — not just hear a lecture.`;
 
+// Reading size for AI-generated content (the AI Sermon Assistant output).
+// Class names are written out in full so Tailwind can see them.
+export type AIFontSize = 'sm' | 'md' | 'lg' | 'xl';
+
+export const AI_FONT_SIZES: { key: AIFontSize; label: string; className: string }[] = [
+  { key: 'sm', label: 'Standard', className: 'text-sm leading-relaxed' },
+  { key: 'md', label: 'Large', className: 'text-base leading-relaxed' },
+  { key: 'lg', label: 'Larger', className: 'text-lg leading-relaxed' },
+  { key: 'xl', label: 'Largest', className: 'text-xl leading-relaxed' },
+];
+
 export interface AppSettings {
   aiInstructions: string;
+  aiFontSize: AIFontSize;   // size of AI-generated content only
   accentColor: string;      // hex, '' means use the app default
   notesFontFamily: string;  // CSS font-family value for the notes page
   notesFontSize: number;    // pt
@@ -65,6 +77,7 @@ export interface AppSettings {
 
 export const DEFAULT_SETTINGS: AppSettings = {
   aiInstructions: DEFAULT_AI_INSTRUCTIONS,
+  aiFontSize: 'sm', // matches the size the AI text has always been
   accentColor: '',
   notesFontFamily: "Georgia, 'Times New Roman', serif",
   notesFontSize: 12,
@@ -109,7 +122,11 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [settings, setSettings] = useState<AppSettings>(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+      if (raw) {
+        const merged = { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+        if (!AI_FONT_SIZES.some(f => f.key === merged.aiFontSize)) merged.aiFontSize = DEFAULT_SETTINGS.aiFontSize;
+        return merged;
+      }
     } catch (e) { /* ignore */ }
     return DEFAULT_SETTINGS;
   });

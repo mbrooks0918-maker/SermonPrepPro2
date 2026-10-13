@@ -7,13 +7,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Trash2, Calendar, Sparkles, RefreshCw, Check, Loader2, Radio, SlidersHorizontal, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowLeft, Trash2, Minus, Plus, Calendar, Sparkles, RefreshCw, Check, Loader2, Radio, SlidersHorizontal, ChevronDown, ChevronUp } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import SermonNotesEditor from './SermonNotesEditor';
-import { useSettings } from '@/contexts/SettingsContext';
+import { useSettings, AI_FONT_SIZES } from '@/contexts/SettingsContext';
 
 interface SermonDetailProps {
   sermon: Sermon;
@@ -23,7 +23,13 @@ interface SermonDetailProps {
 }
 
 const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onDelete }) => {
-  const { settings } = useSettings();
+  const { settings, updateSettings } = useSettings();
+  const aiSizeIndex = Math.max(0, AI_FONT_SIZES.findIndex((f) => f.key === settings.aiFontSize));
+  const aiSize = AI_FONT_SIZES[aiSizeIndex];
+  const stepAISize = (delta: number) => {
+    const next = AI_FONT_SIZES[Math.min(AI_FONT_SIZES.length - 1, Math.max(0, aiSizeIndex + delta))];
+    updateSettings({ aiFontSize: next.key });
+  };
   const [editedSermon, setEditedSermon] = useState<Sermon>(sermon);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [aiContent, setAiContent] = useState<string>((sermon as any).ai_content || '');
@@ -299,6 +305,33 @@ const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onD
               <Sparkles className="h-5 w-5 text-green-400" />
               <CardTitle className="text-green-400">AI Sermon Assistant</CardTitle>
             </div>
+            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1" role="group" aria-label="AI text size">
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                aria-label="Smaller AI text"
+                title="Smaller text"
+                disabled={aiSizeIndex === 0}
+                onClick={() => stepAISize(-1)}
+                className="h-8 w-8 bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"
+              >
+                <Minus className="h-4 w-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                aria-label="Larger AI text"
+                title="Larger text"
+                disabled={aiSizeIndex === AI_FONT_SIZES.length - 1}
+                onClick={() => stepAISize(1)}
+                className="h-8 w-8 bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
             <Button
               onClick={handleGenerateAI}
               disabled={isLoadingAI}
@@ -316,6 +349,7 @@ const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onD
                 </>
               )}
             </Button>
+            </div>
           </div>
           <p className="text-gray-300 text-sm mt-1">
             Hopefully, this will be helpful content and give you a head start preparing this message.
@@ -397,7 +431,7 @@ const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onD
             </div>
           )}
           {aiContent && !isLoadingAI && (
-            <div className="text-sm leading-relaxed space-y-1">
+            <div className={`${aiSize.className} space-y-1`}>
               {formatAIContent(aiContent)}
             </div>
           )}
