@@ -35,6 +35,7 @@ const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onD
   const [aiContent, setAiContent] = useState<string>((sermon as any).ai_content || '');
   const [isLoadingAI, setIsLoadingAI] = useState(false);
   const [aiError, setAiError] = useState<string>('');
+  const [aiTruncated, setAiTruncated] = useState(false);
   const [isLive, setIsLive] = useState(false);
   const [showInstructions, setShowInstructions] = useState(false);
 
@@ -189,6 +190,7 @@ const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onD
 
     setIsLoadingAI(true);
     setAiError('');
+    setAiTruncated(false);
     setAiContent('');
 
     try {
@@ -203,6 +205,7 @@ const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onD
       if (data?.result) {
         const generated = data.result;
         setAiContent(generated);
+        setAiTruncated(!!data.truncated);
         const sermonWithAI = {
           ...editedSermon,
           ai_content: generated,
@@ -431,9 +434,17 @@ const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onD
             </div>
           )}
           {aiContent && !isLoadingAI && (
-            <div className={`${aiSize.className} space-y-1`}>
-              {formatAIContent(aiContent)}
-            </div>
+            <>
+              {aiTruncated && (
+                <div className="mb-3 flex items-start gap-2 rounded-md border border-amber-700 bg-amber-950/60 px-3 py-2 text-sm text-amber-300">
+                  <span aria-hidden>⚠️</span>
+                  <span>Response was cut off — try regenerating.</span>
+                </div>
+              )}
+              <div className={`${aiSize.className} space-y-1 whitespace-pre-wrap break-words`}>
+                {formatAIContent(aiContent)}
+              </div>
+            </>
           )}
         </CardContent>
       </Card>

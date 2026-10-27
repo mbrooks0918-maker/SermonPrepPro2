@@ -87,7 +87,7 @@ Keep the tone conversational, honest, and practical. Avoid academic or overly re
       },
       body: JSON.stringify({
         model: 'claude-opus-4-6',
-        max_tokens: 2000,
+        max_tokens: 8000,
         messages: [{ role: 'user', content: prompt }],
       }),
     });
@@ -105,7 +105,15 @@ Keep the tone conversational, honest, and practical. Avoid academic or overly re
     }
 
     const text = data?.content?.[0]?.text || '';
-    return res.status(200).json({ result: text });
+    // Anthropic returns stop_reason: 'max_tokens' when the model hit the limit
+    // before finishing, i.e. the response was cut off for length.
+    const truncated = data?.stop_reason === 'max_tokens';
+    if (truncated) {
+      console.warn('AI generation truncated: stop_reason=max_tokens', {
+        outputTokens: data?.usage?.output_tokens,
+      });
+    }
+    return res.status(200).json({ result: text, truncated });
 
   } catch (err: any) {
     return res.status(500).json({ error: err.message || 'Unknown error connecting to AI service.' });
