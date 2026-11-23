@@ -300,155 +300,6 @@ const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onD
           </AlertDialog>
         </div>
       </div>
-
-      <Card className="bg-gray-950 border border-green-900">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-green-400" />
-              <CardTitle className="text-green-400">AI Sermon Assistant</CardTitle>
-            </div>
-            <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1" role="group" aria-label="AI text size">
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                aria-label="Smaller AI text"
-                title="Smaller text"
-                disabled={aiSizeIndex === 0}
-                onClick={() => stepAISize(-1)}
-                className="h-8 w-8 bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"
-              >
-                <Minus className="h-4 w-4" />
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                aria-label="Larger AI text"
-                title="Larger text"
-                disabled={aiSizeIndex === AI_FONT_SIZES.length - 1}
-                onClick={() => stepAISize(1)}
-                className="h-8 w-8 bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
-            </div>
-            <Button
-              onClick={handleGenerateAI}
-              disabled={isLoadingAI}
-              className="flex items-center gap-2 bg-green-900 hover:bg-green-800 text-white text-sm"
-            >
-              {isLoadingAI ? (
-                <>
-                  <RefreshCw className="h-4 w-4 animate-spin" />
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="h-4 w-4" />
-                  {aiContent ? 'Regenerate' : 'Generate Prep Content'}
-                </>
-              )}
-            </Button>
-            </div>
-          </div>
-          <p className="text-gray-300 text-sm mt-1">
-            Hopefully, this will be helpful content and give you a head start preparing this message.
-          </p>
-
-          {/* Per-sermon AI instruction override */}
-          <div className="mt-3">
-            <button
-              type="button"
-              onClick={() => setShowInstructions((v) => !v)}
-              className="flex items-center gap-2 text-sm text-green-300 hover:text-green-200"
-            >
-              <SlidersHorizontal className="h-4 w-4" />
-              AI instructions for this sermon
-              {usingCustomInstructions && (
-                <Badge variant="secondary" className="bg-green-900 text-green-200">Custom</Badge>
-              )}
-              {showInstructions ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-            </button>
-
-            {showInstructions && (
-              <div className="mt-2 space-y-2">
-                <p className="text-xs text-gray-400">
-                  Overrides your global Settings instructions for this sermon only. Leave blank to use
-                  the global instructions. Use <code className="text-green-400">{'{{title}}'}</code>,{' '}
-                  <code className="text-green-400">{'{{scripture}}'}</code>, and{' '}
-                  <code className="text-green-400">{'{{theme}}'}</code> as placeholders.
-                </p>
-                <Textarea
-                  value={sermonInstructions}
-                  onFocus={() => { focusedField.current = 'aiInstructions'; }}
-                  onBlur={() => { focusedField.current = null; }}
-                  onChange={(e) => setSermonInstructions(e.target.value)}
-                  placeholder="Leave blank to use your global Settings instructions..."
-                  className="min-h-[160px] bg-black text-white border-gray-700 font-mono text-xs leading-relaxed"
-                  spellCheck={false}
-                />
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setSermonInstructions(settings.aiInstructions)}
-                    className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"
-                  >
-                    Start from global
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setSermonInstructions('')}
-                    disabled={!usingCustomInstructions}
-                    className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"
-                  >
-                    Clear override
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent>
-          {aiError && (
-            <p className="text-red-400 text-sm">{aiError}</p>
-          )}
-          {!aiContent && !isLoadingAI && !aiError && (
-            <p className="text-gray-400 text-sm italic">
-              Fill in the title, scripture, and theme then click "Generate Prep Content" to get started.
-            </p>
-          )}
-          {isLoadingAI && (
-            <div className="space-y-2">
-              <div className="h-3 bg-gray-800 rounded animate-pulse w-3/4" />
-              <div className="h-3 bg-gray-800 rounded animate-pulse w-full" />
-              <div className="h-3 bg-gray-800 rounded animate-pulse w-2/3" />
-              <div className="h-3 bg-gray-800 rounded animate-pulse w-full" />
-              <div className="h-3 bg-gray-800 rounded animate-pulse w-1/2" />
-            </div>
-          )}
-          {aiContent && !isLoadingAI && (
-            <>
-              {aiTruncated && (
-                <div className="mb-3 flex items-start gap-2 rounded-md border border-amber-700 bg-amber-950/60 px-3 py-2 text-sm text-amber-300">
-                  <span aria-hidden>⚠️</span>
-                  <span>Response was cut off — try regenerating.</span>
-                </div>
-              )}
-              <div className={`${aiSize.className} space-y-1 whitespace-pre-wrap break-words`}>
-                {formatAIContent(aiContent)}
-              </div>
-            </>
-          )}
-        </CardContent>
-      </Card>
-
       <div className="grid gap-6 md:grid-cols-2">
         <Card className="bg-black border-gray-800">
           <CardHeader>
@@ -672,6 +523,154 @@ const SermonDetail: React.FC<SermonDetailProps> = ({ sermon, onBack, onSave, onD
           </CardContent>
         </Card>
       </div>
+
+      <Card className="bg-gray-950 border border-green-900">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-green-400" />
+              <CardTitle className="text-green-400">AI Sermon Assistant</CardTitle>
+            </div>
+            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1" role="group" aria-label="AI text size">
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                aria-label="Smaller AI text"
+                title="Smaller text"
+                disabled={aiSizeIndex === 0}
+                onClick={() => stepAISize(-1)}
+                className="h-8 w-8 bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"
+              >
+                <Minus className="h-4 w-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                aria-label="Larger AI text"
+                title="Larger text"
+                disabled={aiSizeIndex === AI_FONT_SIZES.length - 1}
+                onClick={() => stepAISize(1)}
+                className="h-8 w-8 bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+            <Button
+              onClick={handleGenerateAI}
+              disabled={isLoadingAI}
+              className="flex items-center gap-2 bg-green-900 hover:bg-green-800 text-white text-sm"
+            >
+              {isLoadingAI ? (
+                <>
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4" />
+                  {aiContent ? 'Regenerate' : 'Generate Prep Content'}
+                </>
+              )}
+            </Button>
+            </div>
+          </div>
+          <p className="text-gray-300 text-sm mt-1">
+            Hopefully, this will be helpful content and give you a head start preparing this message.
+          </p>
+
+          {/* Per-sermon AI instruction override */}
+          <div className="mt-3">
+            <button
+              type="button"
+              onClick={() => setShowInstructions((v) => !v)}
+              className="flex items-center gap-2 text-sm text-green-300 hover:text-green-200"
+            >
+              <SlidersHorizontal className="h-4 w-4" />
+              AI instructions for this sermon
+              {usingCustomInstructions && (
+                <Badge variant="secondary" className="bg-green-900 text-green-200">Custom</Badge>
+              )}
+              {showInstructions ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </button>
+
+            {showInstructions && (
+              <div className="mt-2 space-y-2">
+                <p className="text-xs text-gray-400">
+                  Overrides your global Settings instructions for this sermon only. Leave blank to use
+                  the global instructions. Use <code className="text-green-400">{'{{title}}'}</code>,{' '}
+                  <code className="text-green-400">{'{{scripture}}'}</code>, and{' '}
+                  <code className="text-green-400">{'{{theme}}'}</code> as placeholders.
+                </p>
+                <Textarea
+                  value={sermonInstructions}
+                  onFocus={() => { focusedField.current = 'aiInstructions'; }}
+                  onBlur={() => { focusedField.current = null; }}
+                  onChange={(e) => setSermonInstructions(e.target.value)}
+                  placeholder="Leave blank to use your global Settings instructions..."
+                  className="min-h-[160px] bg-black text-white border-gray-700 font-mono text-xs leading-relaxed"
+                  spellCheck={false}
+                />
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setSermonInstructions(settings.aiInstructions)}
+                    className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"
+                  >
+                    Start from global
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setSermonInstructions('')}
+                    disabled={!usingCustomInstructions}
+                    className="bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"
+                  >
+                    Clear override
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent className="max-h-80 overflow-y-auto">
+          {aiError && (
+            <p className="text-red-400 text-sm">{aiError}</p>
+          )}
+          {!aiContent && !isLoadingAI && !aiError && (
+            <p className="text-gray-400 text-sm italic">
+              Fill in the title, scripture, and theme then click "Generate Prep Content" to get started.
+            </p>
+          )}
+          {isLoadingAI && (
+            <div className="space-y-2">
+              <div className="h-3 bg-gray-800 rounded animate-pulse w-3/4" />
+              <div className="h-3 bg-gray-800 rounded animate-pulse w-full" />
+              <div className="h-3 bg-gray-800 rounded animate-pulse w-2/3" />
+              <div className="h-3 bg-gray-800 rounded animate-pulse w-full" />
+              <div className="h-3 bg-gray-800 rounded animate-pulse w-1/2" />
+            </div>
+          )}
+          {aiContent && !isLoadingAI && (
+            <>
+              {aiTruncated && (
+                <div className="mb-3 flex items-start gap-2 rounded-md border border-amber-700 bg-amber-950/60 px-3 py-2 text-sm text-amber-300">
+                  <span aria-hidden>⚠️</span>
+                  <span>Response was cut off — try regenerating.</span>
+                </div>
+              )}
+              <div className={`${aiSize.className} space-y-1 whitespace-pre-wrap break-words`}>
+                {formatAIContent(aiContent)}
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 };
